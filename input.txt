@@ -1,0 +1,106 @@
+/* input.txt
+────────────────────────────────────────────────────────────────────────────────
+Descripción:
+Este archivo define la configuración utilizada por el clasificador bayesiano.
+Permite especificar el dataset, la hoja de cálculo, el atributo objetivo (columna clase),
+y la instancia que se desea clasificar. A partir de esta configuración, el programa
+realiza los cálculos de probabilidades condicionales según el teorema de Bayes,
+determinando la clase más probable para la instancia proporcionada y generando
+un reporte en formato PDF con los resultados.
+
+Estructura general:
+────────────────────────────────────────────────────────────────────────────────
+DATASET            → Ruta del archivo de datos (.ods, .xlsx o .csv)
+SHEET              → Nombre de la hoja dentro del archivo (ej. Sheet1, Sheet4)
+TARGET_COLUMN      → Columna que representa la variable de clase a predecir
+USE_ALL_ATTRIBUTES → Indica si se usarán todos los atributos (true/false)
+REPORT             → Ruta y nombre del reporte PDF a generar
+LAPLACE_ALPHA      → (Opcional) Factor de suavizado de Laplace (por defecto 1)
+
+INSTANCE           → Define la instancia a clasificar mediante pares atributo=valor
+
+Notas:
+────────────────────────────────────────────────────────────────────────────────
+- Solo una configuración activa debe estar descomentada al ejecutar el programa.
+- Cada bloque de configuración puede corresponder a un dataset distinto.
+- El reporte generado incluirá los cálculos intermedios y la predicción final.
+- Este archivo puede contener múltiples ejemplos, separados por comentarios (#).
+
+Ejemplo mínimo:
+────────────────────────────────────────────────────────────────────────────────
+DATASET=data/peliculas.ods
+SHEET=Sheet1
+TARGET_COLUMN=Calificación
+USE_ALL_ATTRIBUTES=true
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  Género=Acción 
+──────────────────────────────────────────────────────────────────────────────── */
+
+/* ==============================
+    Dataset: musica.ods
+   ============================== */
+DATASET=data/musica.ods
+SHEET=Sheet4
+TARGET_COLUMN=Popularidad
+USE_ALL_ATTRIBUTES=true
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  Artista=Queen
+  Plataforma=Spotify
+  Oyente=M
+  Género=Rock
+
+/* ==============================
+    Dataset: videojuegos.ods
+   ============================== */
+/*
+DATASET=data/videojuegos.ods
+SHEET=Sheet4
+TARGET_COLUMN=Puntaje
+USE_ALL_ATTRIBUTES=true
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  Desarrolladora=Ubisoft
+  Consola=PlayStation
+  Jugador=M
+  Género=Acción
+*/
+
+/* ==============================
+    Dataset: comida.ods
+   ============================== */
+/*
+DATASET=data/comida.ods
+SHEET=Sheet4
+TARGET_COLUMN=Sabor
+USE_ALL_ATTRIBUTES=true
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  Chef=Kenji
+  Restaurante=Sakura
+  Cliente=M
+  Tipo=Japonesa
+*/
+
+/* ==============================
+    Dataset: peliculas.ods
+   ============================== */
+/*
+DATASET=data/peliculas.ods
+SHEET=Sheet4
+TARGET_COLUMN=Calificación
+USE_ALL_ATTRIBUTES=true
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  Director=Del Toro
+  Productora=Warner
+  Usuario=M
+  Género=Acción
+*/
+
