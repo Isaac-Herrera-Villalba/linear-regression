@@ -1,10 +1,10 @@
 # Makefile
 # -----------------------------------------------------------------------
 # Descripción:
-# Automatiza la ejecución del proyecto bayesian-classification.
+# Automatiza la ejecución del proyecto linear-regression.
 # Incluye la creación del entorno virtual, instalación de dependencias,
-# ejecución del clasificador bayesiano y compilación del reporte
-# en PDF mediante LaTeX.
+# ejecución del cálculo de regresión lineal (múltiple o simple)
+# y la compilación del reporte en PDF mediante LaTeX.
 # -----------------------------------------------------------------------
 
 PYTHON        = python3
@@ -14,18 +14,19 @@ INPUT_FILE    = input.txt
 MAIN_FILE     = $(SRC_DIR)/main.py
 PDF_READER    = okular
 
-SPREADSHEET = libreoffice
-EXT = ods
+LATEX_REPORT_NAME = reporte_2D_all
 
-DATASET = peliculas
-DATASET_PATH = data/$(DATASET).$(EXT)
+EXT           = ods
+
+DATASET       = ejemplo
+DATASET_PATH  = data/$(DATASET).$(EXT)
 
 VENV_DIR      = .venv
 PYTHON_VENV   = $(VENV_DIR)/bin/python
 PIP_VENV      = $(VENV_DIR)/bin/pip
 
-PDF_FILE      = $(OUT_DIR)/reporte_1.pdf
-TEX_FILE      = $(OUT_DIR)/reporte_1.tex
+PDF_FILE      = $(OUT_DIR)/$(LATEX_REPORT_NAME).pdf
+TEX_FILE      = $(OUT_DIR)/$(LATEX_REPORT_NAME).tex
 
 .PHONY: all help env run latex pdf view clean full show_dataset
 
@@ -35,7 +36,7 @@ all: help
 help:
 	@echo "Comandos disponibles:"
 	@echo "  make env    -> Crea entorno virtual e instala dependencias"
-	@echo "  make run    -> Ejecuta el clasificador bayesiano (genera .tex y PDF automático)"
+	@echo "  make run    -> Ejecuta la regresión lineal (genera .tex y PDF automático)"
 	@echo "  make latex  -> Compila manualmente el archivo .tex con LaTeX"
 	@echo "  make pdf    -> Alias de make run (genera reporte PDF desde input.txt)"
 	@echo "  make view   -> Abre el PDF resultante"
@@ -59,7 +60,7 @@ env:
 
 # -----------------------------------------------------------------------
 run:
-	@echo "=== Ejecutando clasificador bayesiano ==="
+	@echo "=== Ejecutando regresión lineal ==="
 	mkdir -pv $(OUT_DIR)/
 	$(PYTHON_VENV) -m $(SRC_DIR).main $(INPUT_FILE)
 	@echo "[OK] Ejecución completada. Si el .tex fue generado, puedes compilarlo con 'make latex'"
@@ -75,16 +76,6 @@ latex:
 		echo "[OK] Compilación LaTeX completada: $(PDF_FILE)"; \
 	else \
 		echo "[ERROR] No se encontró $(TEX_FILE). Ejecuta primero 'make run'."; \
-	fi
-
-# -----------------------------------------------------------------------
-show_dataset:
-	@echo "Muestra el dataset utilizado"
-	@if [ -n "$$DISPLAY" ]; then \
-		echo "[OK] Abriendo $(DATASET_PATH) con LibreOffice..."; \
-		$(SPREADSHEET) "$(DATASET_PATH)" & \
-	else \
-		echo "[ERROR] No hay entorno gráfico (DISPLAY). Ejecuta este comando dentro de una sesión con GUI."; \
 	fi
 
 # -----------------------------------------------------------------------

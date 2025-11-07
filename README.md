@@ -15,54 +15,79 @@
 
 ### Descripción general
 
-Este proyecto implementa un modelo de **Regresión Lineal** en **Python**, diseñado para analizar datasets en formatos **CSV**, **XLSX** o **ODS** y **ajustar una función matemática** que describa la relación entre una o más variables independientes (*predictoras*) y una variable dependiente (*objetivo*).
+Este proyecto implementa un sistema de **Regresión Lineal (múltiple)** en **Python**, diseñado para analizar datasets en formato **CSV**, **XLSX** o **ODS**.  
+El programa ajusta una **función matemática del tipo**:
 
-El sistema permite al usuario cargar datasets de diversa naturaleza (por ejemplo: economía, educación, salud, rendimiento académico, etc.), procesarlos automáticamente y generar un **modelo predictivo** basado en la **minimización del error cuadrático medio (MSE)**.
+\[
+y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \cdots + \beta_mx_m
+\]
 
-También ofrece la posibilidad de **visualizar los resultados** mediante gráficos, obtener el **coeficiente de determinación (R²)** y **generar reportes automáticos en formato PDF** con los cálculos, la ecuación resultante y las gráficas de ajuste.
+mediante el método de **Mínimos Cuadrados Ordinarios (Ordinary Least Squares, OLS)**.  
+A partir del modelo calculado, se generan **predicciones numéricas** y un **reporte en PDF** con los pasos teóricos y cálculos detallados.
 
 ---
 
 ### Características principales
 
 - Lectura automática de archivos `.csv`, `.xlsx` y `.ods`.  
-- Detección dinámica del número de columnas y tipos de datos.  
-- Selección flexible de variables dependientes e independientes.  
-- Cálculo de:
-  - Pendiente y ordenada al origen.  
-  - Error cuadrático medio (MSE).  
-  - Coeficiente de determinación (R²).  
-- Generación automática de reportes en **LaTeX → PDF**.  
-- Soporte para múltiples datasets en un mismo archivo de configuración (`input.txt`).  
-- Posibilidad de graficar el modelo de regresión lineal simple o múltiple.  
+- Detección automática del bloque de datos, encabezados y tipos válidos.  
+- Selección flexible de:
+  - Variable dependiente (*Y*).  
+  - Variables independientes (*X₁, X₂, ..., Xₙ*).  
+- Procesamiento automático de valores numéricos.  
+- Cálculo del **vector de coeficientes β** usando la ecuación normal:
+  \[
+  \boldsymbol{\beta} = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top \mathbf{y}
+  \]
+- Obtención de métricas de ajuste:
+  - **Intercepto (β₀)**  
+  - **Pendientes (β₁..βₙ)**  
+  - **Coeficiente de determinación (R²)**  
+- Soporte para múltiples instancias (valores de entrada) definidas en `input.txt`.  
+- Generación de **un único reporte PDF** con todos los pasos matemáticos por cada instancia:  
+  1. Modelo general.  
+  2. Función objetivo.  
+  3. Ecuaciones normales.  
+  4. Sustitución de valores y predicción numérica (ŷ).  
 
 ---
 
 ### Funcionamiento general
 
-#### 1. Entrada
+#### 1️⃣ Entrada: archivo `input.txt`
 
-El archivo `input.txt` actúa como **fuente de configuración principal**.  
-En él se definen las rutas de los datasets, las variables a analizar y los parámetros de salida del reporte.
+El archivo `input.txt` actúa como **fuente de configuración principal** del sistema.  
+En él se definen los parámetros de análisis, el dataset a utilizar y las instancias a evaluar.
 
 ##### Estructura general
 
 | Clave | Descripción |
 |-------|--------------|
 | `DATASET` | Ruta del archivo de datos (`.ods`, `.xlsx`, `.csv`). |
-| `SHEET` | Nombre de la hoja (en caso de archivos de hoja de cálculo). |
-| `DEPENDENT_VAR` | Variable dependiente o de salida (Y). |
-| `INDEPENDENT_VARS` | Variables predictoras (X₁, X₂, ...). |
-| `REPORT` | Ruta y nombre del archivo PDF generado. |
-| `PLOT` | Habilita la generación de gráficas (`true` / `false`). |
+| `HOJA` / `SHEET` | Nombre de la hoja (en caso de archivos Excel o LibreOffice). |
+| `DEPENDENT_VARIABLE` | Variable dependiente o de salida (*Y*). |
+| `INDEPENDENT_VARIABLES` | Variables independientes o predictoras (*X₁, X₂, …*). |
+| `USE_ALL_ATTRIBUTES` | Si es `true`, usa todas las columnas excepto *Y*. |
+| `REPORT` | Ruta y nombre del archivo PDF a generar. |
+| `INSTANCE` | Una o más instancias con valores para predecir ŷ. |
 
 ##### Ejemplo de configuración activa
 
 ```txt
-DATASET=data/ventas.ods
-SHEET=Sheet1
-DEPENDENT_VAR=Ingresos
-INDEPENDENT_VARS=Publicidad,Promociones
-REPORT=output/reporte_ventas.pdf
-PLOT=true
+DATASET=data/regresion_lineal_2_y_3_dimensiones.ods
+HOJA=Hoja5
+DEPENDENT_VARIABLE=y
+INDEPENDENT_VARIABLES=x1, x2
+USE_ALL_ATTRIBUTES=false
+REPORT=output/reporte_2D.pdf
+
+# --- Instancia 1 ---
+INSTANCE:
+  x1=8
+  x2=10
+
+# --- Instancia 2 ---
+INSTANCE:
+  x1=12
+  x2=15
 

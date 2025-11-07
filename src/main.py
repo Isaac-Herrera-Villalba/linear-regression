@@ -2,110 +2,128 @@
 # -*- coding: utf-8 -*-
 
 """
-src/main.py
+ src/main.py
  ------------------------------------------------------------
  Descripción:
 
-Programa principal que ejecuta el flujo completo del clasificador Naive Bayes
+ Programa principal que ejecuta el flujo completo de Regresión Lineal:
+   input.txt  →  carga dataset  →  preprocesa numéricos  →  OLS  →  PDF
+
+ Ahora genera un único reporte PDF con todas las instancias válidas,
+ mostrando todos los pasos (1–4) por cada una.
+ ------------------------------------------------------------
 """
 
 from __future__ import annotations
 import sys
 import unicodedata
+from typing import Dict, List
+import pandas as pd
+
 from .config import Config
 from .loader import load_dataset
-from .preprocess import discretize
-from .bayes import run_naive_bayes
-from .report_latex import render_pdf
+from .preprocess_regression import ensure_numeric_subset
+from .linear_regression import run_linear_regression
+from .report_builder import build_full_report_block
+from .report_latex import render_all_instances_pdf
 
-# Normaliza cadenas para comparación (quita tildes, minúsculas, sin espacios extra).
+
 def normalize_str(s: str) -> str:
+    """Normaliza cadenas para comparación (quita tildes, minúsculas, sin espacios extra)."""
     s = str(s).strip().lower()
     return ''.join(
         c for c in unicodedata.normalize('NFD', s)
         if unicodedata.category(c) != 'Mn'
     )
 
-# Selecciona atributos y columna objetivo.
-def select_columns(df, cfg):
+
+def select_columns(df: pd.DataFrame, cfg: Config) -> tuple[list[str], str, dict[str, str]]:
+    """
+    Selecciona variables dependiente e independientes según input.txt.
+    Acepta alias:
+      - Dependiente: TARGET_COLUMN, DEPENDENT_VARIABLE
+      - Independientes: ATTRIBUTES, INDEPENDENT_VARIABLES
+    Si no hay lista de X y USE_ALL_ATTRIBUTES=true, usa todas menos y.
+    """
     cols = list(df.columns)
     normalized_cols = {normalize_str(c): c for c in cols}
 
-    # Determinar columna objetivo (target)
-    if cfg.target_column:
-        target_key = normalize_str(cfg.target_column)
-        if target_key not in normalized_cols:
-            raise ValueError(
-                f"La columna objetivo '{cfg.target_column}' no existe en el dataset.\n"
-                f"Columnas disponibles: {list(df.columns)}"
-            )
-        target = normalized_cols[target_key]
+    # Variable dependiente (y)
+    y_key = cfg.target_column or getattr(cfg, "dependent_variable", None)
+    if not y_key:
+        y = cols[-1]
     else:
-        target = cols[-1]  # Última columna por defecto
+        nk = normalize_str(y_key)
+        if nk not in normalized_cols:
+            raise ValueError(
+                f"La columna dependiente '{y_key}' no existe.\nColumnas: {cols}"
+            )
+        y = normalized_cols[nk]
 
-    # Determinar atributos
-    attrs = [c for c in cols if c != target]
-    if not cfg.use_all_attributes and cfg.attributes:
-        attrs = [normalized_cols[normalize_str(c)]
-                 for c in cfg.attributes if normalize_str(c) in normalized_cols]
+    # Variables independientes (X)
+    x_alias = cfg.attributes or getattr(cfg, "independent_variables", None)
+    if x_alias and not cfg.use_all_attributes:
+        x_cols = [normalized_cols[normalize_str(c)]
+                  for c in x_alias if normalize_str(c) in normalized_cols and normalized_cols[normalize_str(c)] != y]
+    else:
+        x_cols = [c for c in cols if c != y]
 
-    if len(attrs) < 1:
-        raise ValueError("Se requieren ≥ 2 columnas (1 atributo + 1 clase)")
+    if len(x_cols) < 1:
+        raise ValueError("Se requieren ≥ 2 columnas (al menos 1 X + 1 y).")
 
-    return attrs, target, normalized_cols
+    return x_cols, y, normalized_cols
 
-# Función principal: controla la ejecución del programa
+
 def main():
-    # Verificación de argumentos del programa
     if len(sys.argv) != 2:
         print("Uso: python -m src.main input.txt")
         sys.exit(1)
 
-    # Carga y preparación del archivo de configuración
-    cfg = Config(sys.argv[1]) # Carga del dataset
-    df = load_dataset(cfg.dataset, cfg.sheet) # Conversión a texto
-    df = df.astype(str)
+    # Carga configuración y dataset
+    cfg = Config(sys.argv[1])
+    df = load_dataset(cfg.dataset, cfg.sheet).astype(str)
+    x_cols, y_col, normalized_cols = select_columns(df, cfg)
 
-    # Selección de atributos y clase objetivo
-    attrs, target, normalized_cols = select_columns(df, cfg)
-
-    # Normalizar valores de instancia según columnas reales
-    if cfg.numeric_mode == "discretize":
-        df = discretize(df, attrs, bins=cfg.bins, strategy=cfg.discretize_strategy)
-
-    for idx, inst in enumerate(cfg.instances, 1):
-        # Normaliza nombres de atributos de la instancia
-        inst_norm = {}
+    # Normalización de nombres en instancias
+    norm_instances: List[Dict[str, str]] = []
+    for inst in cfg.instances:
+        inst_norm: Dict[str, str] = {}
         for k, v in inst.items():
             nk = normalize_str(k)
             if nk in normalized_cols:
-                inst_norm[normalized_cols[nk]] = v
-            else:
-                print(f"[WARN] Atributo '{k}' no encontrado en las columnas del dataset, se ignora.")
+                true_col = normalized_cols[nk]
+                if true_col in x_cols:
+                    inst_norm[true_col] = v
+        if all(c in inst_norm for c in x_cols):
+            norm_instances.append(inst_norm)
+        else:
+            print(f"[WARN] Instancia ignorada por columnas faltantes. Se requieren: {x_cols}")
 
-        print(f"\n===== INSTANCIA {idx}: {inst_norm} =====")
+    # Verificación de instancias válidas
+    if not norm_instances:
+        print("[ERROR] No se detectaron instancias válidas en el archivo de configuración.")
+        print(f"        Asegúrate de definir al menos un bloque INSTANCE: con todas las variables X requeridas: {x_cols}")
+        sys.exit(1)
 
-        # Ejecución del clasificador Naive Bayes para la instancia
-        try:
-            res = run_naive_bayes(df, target, attrs, inst_norm, alpha=cfg.laplace_alpha)
-        except KeyError as e:
-            print(f"[ERROR] Atributo faltante o incorrecto: {e}")
-            continue
+    # Preprocesamiento numérico
+    used_cols = [y_col] + x_cols
+    df_num, dropped = ensure_numeric_subset(df, used_cols)
+    if dropped > 0:
+        print(f"[INFO] Filas descartadas por NaN/no-numéricas en {used_cols}: {dropped}")
 
-        # Obtención de la predicción con mayor probabilidad
-        pred = max(res.posteriors, key=res.posteriors.get)
-        print(f">>> Predicción: {pred}")
+    # Genera bloque completo para todas las instancias
+    print("=== Ejecutando regresión lineal ===")
+    all_block = build_full_report_block(norm_instances, df_num, y_col, x_cols)
 
-        # Generación del reporte PDF si la ruta está configurada
-        if cfg.report_path:
-            out = cfg.report_path.replace(".pdf", f"_{idx}.pdf")
-            render_pdf(out, df, target, attrs, res.priors, res.cond_tables, inst_norm, res.posteriors, res.raw_counts)
+    # Generación del PDF único
+    if cfg.report_path:
+        out = cfg.report_path.replace(".pdf", "_all.pdf")
+        render_all_instances_pdf(out, all_block)
+        print(f"[OK] Reporte generado con todas las instancias: {out}")
 
-            print(f"[OK] Reporte: {out}")
+    print("[OK] Ejecución completada.")
 
-    print("[OK] Ejecución completada. Si el .tex fue generado, puedes compilarlo con 'make latex'.")
 
-# Punto de entrada del script
 if __name__ == "__main__":
     main()
 

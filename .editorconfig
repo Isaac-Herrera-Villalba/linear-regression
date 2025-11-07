@@ -1,5 +1,5 @@
-# .editorconfig para bayesian-classification
-# Mantiene estilo consistente en código Python, LaTeX y archivos de datos
+# .editorconfig para linear-regression
+# Mantiene un estilo consistente en código Python, LaTeX y archivos de configuración
 root = true
 
 #############################
@@ -13,13 +13,20 @@ indent_style = space
 indent_size = 4
 
 ######################################
-# Ficheros de texto, markdown y config
+# Ficheros de texto, Markdown y config
 [*.{md,txt,ini,conf}]
 trim_trailing_whitespace = false
 max_line_length = 100
 
+# input.txt (config principal del proyecto)
+[input.txt]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+insert_final_newline = true
+
 ######################################
-# Archivos CSV y datos
+# Archivos de datos (CSV, ODS, XLSX)
 [*.{csv,ods,xlsx}]
 charset = utf-8
 end_of_line = lf
@@ -33,8 +40,8 @@ indent_size = 4
 [*.py]
 indent_style = space
 indent_size = 4
-# Recomendado por Black
-max_line_length = 88
+# Compatible con Black pero con un poco más de margen para ecuaciones y docstrings largos
+max_line_length = 95
 trim_trailing_whitespace = true
 insert_final_newline = true
 
@@ -51,7 +58,8 @@ indent_style = space
 indent_size = 2
 trim_trailing_whitespace = true
 insert_final_newline = true
-max_line_length = 100
+# Líneas largas permitidas por fórmulas extensas
+max_line_length = 120
 
 ######################################
 # Archivos de licencia o README

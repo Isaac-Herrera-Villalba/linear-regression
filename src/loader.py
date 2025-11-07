@@ -6,8 +6,8 @@
  ------------------------------------------------------------
  Descripción:
 
- Módulo encargado de cargar datasets desde distintos formatos 
- (CSV, XLSX, ODS) y detectar automáticamente la tabla de datos 
+ Módulo encargado de cargar datasets desde distintos formatos
+ (CSV, XLSX, ODS) y detectar automáticamente la tabla de datos
  ignorando filas o columnas vacías.
  """
 

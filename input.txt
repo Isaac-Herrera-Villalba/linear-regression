@@ -1,106 +1,81 @@
 /* input.txt
 ────────────────────────────────────────────────────────────────────────────────
 Descripción:
-Este archivo define la configuración utilizada por el clasificador bayesiano.
-Permite especificar el dataset, la hoja de cálculo, el atributo objetivo (columna clase),
-y la instancia que se desea clasificar. A partir de esta configuración, el programa
-realiza los cálculos de probabilidades condicionales según el teorema de Bayes,
-determinando la clase más probable para la instancia proporcionada y generando
-un reporte en formato PDF con los resultados.
+Este archivo define la configuración utilizada por el sistema de **Regresión Lineal**.
+Permite especificar el dataset, la hoja de cálculo, la variable dependiente (Y),
+las variables independientes (X₁, X₂, ...), y las instancias que se desean evaluar.
 
+A partir de esta configuración, el programa realiza automáticamente el proceso de
+**Mínimos Cuadrados Ordinarios (OLS)** y genera un **reporte unificado en formato PDF**
+con los resultados paso a paso para **todas las instancias válidas** definidas en este
+archivo. Cada instancia se muestra como una sección separada dentro del mismo PDF.
+
+El reporte incluye los siguientes apartados:
+
+  1. El modelo lineal general.
+  2. La formulación de la función objetivo y sus derivadas.
+  3. Las ecuaciones normales y la solución del vector β.
+  4. La sustitución de valores X en Y para obtener la predicción ŷ.
+
+────────────────────────────────────────────────────────────────────────────────
 Estructura general:
 ────────────────────────────────────────────────────────────────────────────────
-DATASET            → Ruta del archivo de datos (.ods, .xlsx o .csv)
-SHEET              → Nombre de la hoja dentro del archivo (ej. Sheet1, Sheet4)
-TARGET_COLUMN      → Columna que representa la variable de clase a predecir
-USE_ALL_ATTRIBUTES → Indica si se usarán todos los atributos (true/false)
-REPORT             → Ruta y nombre del reporte PDF a generar
-LAPLACE_ALPHA      → (Opcional) Factor de suavizado de Laplace (por defecto 1)
+DATASET               → Ruta del archivo de datos (.ods, .xlsx o .csv)
+SHEET / HOJA          → Nombre de la hoja dentro del archivo (ej. Sheet1, Hoja5)
+DEPENDENT_VARIABLE    → Variable dependiente (columna Y)
+INDEPENDENT_VARIABLES → Lista de variables independientes separadas por comas
+USE_ALL_ATTRIBUTES    → Indica si se usarán todas las columnas (true/false)
+REPORT                → Ruta y nombre del reporte PDF a generar
 
-INSTANCE           → Define la instancia a clasificar mediante pares atributo=valor
+INSTANCE              → Define una o más instancias para evaluar, mediante pares
+                        atributo=valor (debe incluir todas las X del modelo)
 
+────────────────────────────────────────────────────────────────────────────────
 Notas:
 ────────────────────────────────────────────────────────────────────────────────
 - Solo una configuración activa debe estar descomentada al ejecutar el programa.
-- Cada bloque de configuración puede corresponder a un dataset distinto.
-- El reporte generado incluirá los cálculos intermedios y la predicción final.
+- Los nombres de hoja pueden estar en inglés o español (Sheet1, Hoja5, Página1, etc.).
+- Se aceptan tildes, caracteres Unicode y espacios en nombres de columnas.
+- El reporte generado incluirá las matrices (X, y, XᵀX, Xᵀy), los coeficientes β,
+  el coeficiente de determinación (R²) y la ecuación final de predicción con
+  sustitución numérica de cada instancia.
+- Todas las instancias válidas se incluyen dentro del mismo PDF, separadas por sección.
+- Solo se admiten variables numéricas (no categóricas).
 - Este archivo puede contener múltiples ejemplos, separados por comentarios (#).
+- No se requiere graficar los resultados.
 
+────────────────────────────────────────────────────────────────────────────────
 Ejemplo mínimo:
 ────────────────────────────────────────────────────────────────────────────────
-DATASET=data/peliculas.ods
-SHEET=Sheet1
-TARGET_COLUMN=Calificación
-USE_ALL_ATTRIBUTES=true
+DATASET=data/ejemplo.ods
+SHEET=Hoja1
+DEPENDENT_VARIABLE=y
+INDEPENDENT_VARIABLES=x1, x2
+USE_ALL_ATTRIBUTES=false
 REPORT=output/reporte.pdf
 
 INSTANCE:
-  Género=Acción 
+  x1=10
+  x2=20
 ──────────────────────────────────────────────────────────────────────────────── */
 
 /* ==============================
-    Dataset: musica.ods
+   Dataset: regresion_lineal_2_y_3_dimensiones.ods (Hoja5)
    ============================== */
-DATASET=data/musica.ods
-SHEET=Sheet4
-TARGET_COLUMN=Popularidad
-USE_ALL_ATTRIBUTES=true
-REPORT=output/reporte.pdf
+DATASET=data/regresion_lineal_2_y_3_dimensiones.ods
+HOJA=Hoja5
+DEPENDENT_VARIABLE=y
+INDEPENDENT_VARIABLES=x1, x2
+USE_ALL_ATTRIBUTES=false
+REPORT=output/reporte_2D.pdf
 
+# --- Instancia 1 ---
 INSTANCE:
-  Artista=Queen
-  Plataforma=Spotify
-  Oyente=M
-  Género=Rock
+  x1=8
+  x2=10
 
-/* ==============================
-    Dataset: videojuegos.ods
-   ============================== */
-/*
-DATASET=data/videojuegos.ods
-SHEET=Sheet4
-TARGET_COLUMN=Puntaje
-USE_ALL_ATTRIBUTES=true
-REPORT=output/reporte.pdf
-
+# --- Instancia 2 ---
 INSTANCE:
-  Desarrolladora=Ubisoft
-  Consola=PlayStation
-  Jugador=M
-  Género=Acción
-*/
-
-/* ==============================
-    Dataset: comida.ods
-   ============================== */
-/*
-DATASET=data/comida.ods
-SHEET=Sheet4
-TARGET_COLUMN=Sabor
-USE_ALL_ATTRIBUTES=true
-REPORT=output/reporte.pdf
-
-INSTANCE:
-  Chef=Kenji
-  Restaurante=Sakura
-  Cliente=M
-  Tipo=Japonesa
-*/
-
-/* ==============================
-    Dataset: peliculas.ods
-   ============================== */
-/*
-DATASET=data/peliculas.ods
-SHEET=Sheet4
-TARGET_COLUMN=Calificación
-USE_ALL_ATTRIBUTES=true
-REPORT=output/reporte.pdf
-
-INSTANCE:
-  Director=Del Toro
-  Productora=Warner
-  Usuario=M
-  Género=Acción
-*/
+  x1=12
+  x2=15
 

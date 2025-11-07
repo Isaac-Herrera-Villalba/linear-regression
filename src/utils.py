@@ -24,5 +24,5 @@ def parse_bool(s: str) -> bool:
 # Formatea un diccionario en una cadena tipo 'clave=valor, clave=valor'
 def dotted(d: Dict[str, Any]) -> str:
     return ", ".join(f"{k}={v}" for k, v in d.items())
-# ---------------------------------------------------------------------------------
+# -------------------------------------------------------
 
