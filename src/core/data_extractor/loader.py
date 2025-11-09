@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
- src/loader.py
+ src/core/data_extractor/loader.py
  ------------------------------------------------------------
  Descripción:
 

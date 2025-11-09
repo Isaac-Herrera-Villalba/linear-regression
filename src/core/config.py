@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
- src/config.py
+ src/core/config.py
  ------------------------------------------------------------
  Descripción:
 
@@ -20,8 +20,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional
-from .utils import parse_bool
-
+from src.core.utils import parse_bool
 
 class Config:
     """

@@ -20,13 +20,12 @@ import unicodedata
 from typing import Dict, List
 import pandas as pd
 
-from .config import Config
-from .loader import load_dataset
-from .preprocess_regression import ensure_numeric_subset
-from .linear_regression import run_linear_regression
-from .report_builder import build_full_report_block
-from .report_latex import render_all_instances_pdf
-
+from src.core.config import Config
+from src.core.data_extractor.loader import load_dataset
+from src.core.data_extractor.preprocess_regression import ensure_numeric_subset
+from src.regression.linear_regression import run_linear_regression
+from src.report.report_builder import build_full_report_block
+from src.report.report_latex import render_all_instances_pdf
 
 def normalize_str(s: str) -> str:
     """Normaliza cadenas para comparación (quita tildes, minúsculas, sin espacios extra)."""

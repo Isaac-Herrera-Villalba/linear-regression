@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
- src/preprocess_regression.py
+ src/core/data_extractor/preprocess_regression.py
  ------------------------------------------------------------
  Descripción:
 
@@ -19,7 +19,6 @@
 from __future__ import annotations
 from typing import List, Tuple
 import pandas as pd
-
 
 def ensure_numeric_subset(
     df: pd.DataFrame,

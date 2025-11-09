@@ -7,14 +7,19 @@
 # y la compilación del reporte en PDF mediante LaTeX.
 # -----------------------------------------------------------------------
 
-PYTHON        = python3
-SRC_DIR       = src
-OUT_DIR       = output
-INPUT_FILE    = input.txt
-MAIN_FILE     = $(SRC_DIR)/main.py
-PDF_READER    = okular
+PYTHON         = python3
+SRC_DIR        = src
+SRC_DIR_2      = core
+SRC_DIR_3      = data_extractor
+SRC_DIR_4      = regression
+SRC_DIR_5      = report
+OUT_DIR        = output
+INPUT_FILE     = input.txt
+MAIN_FILE      = $(SRC_DIR)/main.py
+PDF_READER     = okular
+PYTHON_MODULES = __pycache__
 
-LATEX_REPORT_NAME = reporte_2D_all
+LATEX_REPORT_NAME = reporte_all
 
 EXT           = ods
 
@@ -90,8 +95,12 @@ full: run latex view show_dataset
 clean:
 	@echo "Eliminando archivos generados..."
 	rm -rf $(OUT_DIR)/
-	find . -type f \( -name "*.aux" -o -name "*.log" -o -name "*.out" -o -name "*.toc" -o -name "*.tex" -o -name "*.synctex.gz" \) -delete
-	rm -rf $(SRC_DIR)/__pycache__
+	rm -rf $(SRC_DIR)/$(PYTHON_MODULES)
+	rm -rf $(SRC_DIR)/$(SRC_DIR_2)/$(PYTHON_MODULES)
+	rm -rf $(SRC_DIR)/$(SRC_DIR_2)/$(SRC_DIR_3)/$(PYTHON_MODULES)
+	rm -rf $(SRC_DIR)/$(SRC_DIR_4)/$(PYTHON_MODULES)
+	rm -rf $(SRC_DIR)/$(SRC_DIR_5)/$(PYTHON_MODULES)
+	
 	rm -f data/.~lock.*
 	@echo "Limpieza completada."
 

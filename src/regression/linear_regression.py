@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
- src/linear_regression.py
+ src/regression/linear_regression.py
  ------------------------------------------------------------
  Descripción:
 

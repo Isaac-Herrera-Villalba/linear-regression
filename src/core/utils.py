@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
- src/utils.py
+ src/core/utils.py
  ------------------------------------------------------------
  Descripción:
 
