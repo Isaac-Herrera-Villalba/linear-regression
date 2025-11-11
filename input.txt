@@ -1,63 +1,83 @@
 /* input.txt
 ────────────────────────────────────────────────────────────────────────────────
-Descripción:
-Este archivo define la configuración utilizada por el sistema de **Regresión Lineal**.
-Permite especificar el dataset, la hoja de cálculo, la variable dependiente (Y),
-las variables independientes (X₁, X₂, ...), y las instancias que se desean evaluar.
+Proyecto: Linear Regression (Python)
+────────────────────────────────────────────────────────────────────────────────
+Descripción general:
+────────────────────────────────────────────────────────────────────────────────
+Archivo de configuración del sistema de **Regresión Lineal (simple y múltiple)**.
+Define los parámetros necesarios para la carga de datos, selección de variables,
+evaluación de instancias y generación del reporte en formato PDF.
 
-A partir de esta configuración, el programa realiza automáticamente el proceso de
-**Mínimos Cuadrados Ordinarios (OLS)** y genera un **reporte unificado en formato PDF**
-con los resultados paso a paso para **todas las instancias válidas** definidas en este
-archivo. Cada instancia se muestra como una sección separada dentro del mismo PDF.
+El sistema ejecuta los cálculos mediante el método de **Mínimos Cuadrados
+Ordinarios (OLS)**, resolviendo el vector de coeficientes β según la ecuación:
 
-El reporte incluye los siguientes apartados:
+    β = (XᵀX)⁻¹ Xᵀy
 
-  1. El modelo lineal general.
-  2. La formulación de la función objetivo y sus derivadas.
-  3. Las ecuaciones normales y la solución del vector β.
-  4. La sustitución de valores X en Y para obtener la predicción ŷ.
+Los resultados se presentan en un reporte unificado que incluye la formulación
+teórica, las matrices asociadas al modelo y la predicción numérica de cada
+instancia evaluada.
 
 ────────────────────────────────────────────────────────────────────────────────
 Estructura general:
 ────────────────────────────────────────────────────────────────────────────────
 DATASET               → Ruta del archivo de datos (.ods, .xlsx o .csv)
-SHEET / HOJA          → Nombre de la hoja dentro del archivo (ej. Sheet1, Hoja5)
-DEPENDENT_VARIABLE    → Variable dependiente (columna Y)
-INDEPENDENT_VARIABLES → Lista de variables independientes separadas por comas
-USE_ALL_ATTRIBUTES    → Indica si se usarán todas las columnas (true/false)
-REPORT                → Ruta y nombre del reporte PDF a generar
+SHEET / HOJA          → Nombre de la hoja dentro del archivo (opcional)
+DEPENDENT_VARIABLE    → Variable dependiente o de salida (columna Y)
+INDEPENDENT_VARIABLES → Lista separada por comas de variables independientes (X₁, X₂, …)
+USE_ALL_ATTRIBUTES    → true/false (utiliza todas las columnas excepto Y si es true)
+REPORT                → Ruta y nombre del archivo PDF de salida
 
-INSTANCE              → Define una o más instancias para evaluar, mediante pares
-                        atributo=valor (debe incluir todas las X del modelo)
-
-────────────────────────────────────────────────────────────────────────────────
-Notas:
-────────────────────────────────────────────────────────────────────────────────
-- Solo una configuración activa debe estar descomentada al ejecutar el programa.
-- Los nombres de hoja pueden estar en inglés o español (Sheet1, Hoja5, Página1, etc.).
-- Se aceptan tildes, caracteres Unicode y espacios en nombres de columnas.
-- El reporte generado incluirá las matrices (X, y, XᵀX, Xᵀy), los coeficientes β,
-  el coeficiente de determinación (R²) y la ecuación final de predicción con
-  sustitución numérica de cada instancia.
-- Todas las instancias válidas se incluyen dentro del mismo PDF, separadas por sección.
-- Solo se admiten variables numéricas (no categóricas).
-- Este archivo puede contener múltiples ejemplos, separados por comentarios (#).
-- No se requiere graficar los resultados.
+INSTANCE              → Define un conjunto de valores para predecir ŷ
+                        Debe incluir todas las variables X especificadas.
 
 ────────────────────────────────────────────────────────────────────────────────
-Ejemplo mínimo:
+Comportamiento del sistema:
 ────────────────────────────────────────────────────────────────────────────────
-DATASET=data/ejemplo.ods
-SHEET=Hoja1
-DEPENDENT_VARIABLE=y
-INDEPENDENT_VARIABLES=x1, x2
-USE_ALL_ATTRIBUTES=false
-REPORT=output/reporte.pdf
+- Si se define una sola variable X, se aplica **regresión lineal simple**.
+- Si se definen dos o más variables X, se aplica **regresión lineal múltiple**.
+- Se admiten múltiples bloques de configuración `DATASET=` dentro del mismo archivo.
+  Cada bloque genera una sección independiente dentro del mismo reporte PDF.
+- Todas las instancias válidas se procesan secuencialmente y se integran
+  en un único documento.
+
+────────────────────────────────────────────────────────────────────────────────
+Estructura del reporte PDF:
+────────────────────────────────────────────────────────────────────────────────
+Cada sección correspondiente a un dataset incluye:
+
+  1. Modelo lineal general.  
+  2. Función objetivo y derivadas parciales.  
+  3. Ecuaciones normales (simbólicas y numéricas).  
+  4. Forma matricial y solución del vector β.  
+  5. Coeficiente de determinación (R²) e interpretación.  
+  6. Sustitución de valores de X y predicción numérica (ŷ).
+
+───────────────────────────────────────────────────────────────────────────────
+Ejemplo corto y genérico:
+────────────────────────────────────────────────────────────────────────────────
+DATASET = data/ejemplo.ods
+SHEET = Hoja1
+DEPENDENT_VARIABLE = Y
+INDEPENDENT_VARIABLES = X1, X2
+REPORT = output/reporte_ejemplo.pdf
 
 INSTANCE:
-  x1=10
-  x2=20
-──────────────────────────────────────────────────────────────────────────────── */
+  X1 = 10
+  X2 = 5
+
+────────────────────────────────────────────────────────────────────────────────
+Notas técnicas:
+────────────────────────────────────────────────────────────────────────────────
+- Los nombres de columnas se interpretan sin distinción entre mayúsculas,
+  minúsculas o tildes.
+- No se admiten variables categóricas ni datos no numéricos.
+- Las filas con valores vacíos o no convertibles se eliminan durante el
+  preprocesamiento.
+- Cada instancia debe incluir todas las variables independientes del modelo.
+- El sistema genera automáticamente un único archivo PDF que agrupa todos
+  los resultados calculados y representaciones matriciales del modelo.
+────────────────────────────────────────────────────────────────────────────────
+*/
 
 /* ==============================
    Dataset: regresion_6d.ods (Hoja1)

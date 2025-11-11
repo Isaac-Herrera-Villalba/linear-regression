@@ -4,16 +4,24 @@
 """
  src/core/config.py
  ------------------------------------------------------------
- Descripción:
+ Módulo encargado de la lectura, interpretación y validación del
+ archivo de configuración `input.txt`, utilizado por el sistema
+ de Regresión Lineal.
 
- Módulo encargado de leer y procesar un archivo de configuración
- (input.txt) con soporte para pares clave=valor, instancias y
- comentarios de línea o bloque.
+ Implementa una clase de alto nivel (`Config`) que abstrae el
+ manejo de claves globales, instancias y alias entre proyectos,
+ permitiendo compatibilidad con configuraciones previas de otros
+ módulos (por ejemplo, clasificación Bayesiana).
 
- Extensión para Regresión Lineal:
-  - Se añaden alias DEPENDENT_VARIABLE (para Y)
-    e INDEPENDENT_VARIABLES (para lista de X)
-    para mantener compatibilidad y flexibilidad.
+ Características principales:
+   - Lectura estructurada de pares clave=valor.
+   - Soporte para comentarios de bloque (/* ... */) y línea (# ...).
+   - Soporte para múltiples instancias (bloques INSTANCE:).
+   - Alias automáticos para variables dependientes e independientes.
+   - Validación de duplicados críticos en la configuración.
+
+ Dependencia:
+   - src.core.utils.parse_bool
  ------------------------------------------------------------
 """
 
@@ -22,10 +30,20 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from src.core.utils import parse_bool
 
+
 class Config:
     """
-    Clase principal que administra la carga, interpretación y validación
-    del archivo de configuración input.txt.
+    Representa una configuración cargada desde un archivo `input.txt`.
+
+    Esta clase administra la lectura y almacenamiento de pares clave=valor
+    definidos en el archivo de configuración, además de manejar múltiples
+    instancias (`INSTANCE:`) y realizar validaciones sobre duplicados de
+    parámetros críticos (por ejemplo, `DATASET` o `DEPENDENT_VARIABLE`).
+
+    Cada instancia del objeto contiene:
+      - Un diccionario de claves globales (`self.kv`).
+      - Una lista de instancias (`self.instances`), donde cada una
+        corresponde a un conjunto de valores específicos para predicción.
     """
 
     def __init__(self, path: str):
@@ -35,16 +53,30 @@ class Config:
 
         self.kv: Dict[str, str] = {}
         self.instances: List[Dict[str, str]] = []
+
+        # Proceso de carga y validación
         self._parse()
         self._validate_duplicates()
 
-    # ------------------------------------------------------------
-    # === PARSEO DE ARCHIVO ===
-    # ------------------------------------------------------------
+    # ============================================================
+    # === PARSEO DE ARCHIVO DE CONFIGURACIÓN ======================
+    # ============================================================
     def _parse(self):
         """
-        Lee input.txt e interpreta pares clave=valor e instancias.
-        Soporta comentarios de bloque (/* ... */) y línea (# ...).
+        Lee y analiza un archivo de configuración `input.txt`.
+
+        Reconoce:
+          - Comentarios de bloque (/* ... */) y de línea (# ...).
+          - Pares clave=valor.
+          - Bloques de instancias (`INSTANCE:`) con sus atributos.
+
+        Flujo lógico:
+          1. El archivo se recorre línea por línea.
+          2. Se eliminan o ignoran comentarios y líneas vacías.
+          3. Cuando se detecta un encabezado `INSTANCE:`, se inicia
+             un nuevo bloque de instancia.
+          4. Las líneas dentro del bloque se almacenan como pares clave=valor.
+          5. Los valores globales se almacenan en `self.kv`.
         """
         current_instance = None
         in_block_comment = False
@@ -66,25 +98,25 @@ class Config:
                 if in_block_comment:
                     continue
 
-                # Ignorar líneas vacías o comentarios de línea
+                # Ignora líneas vacías o comentarios de línea
                 if not line or line.startswith("#"):
                     continue
 
-                # Inicia bloque INSTANCE:
+                # Detección de bloque INSTANCE:
                 if line.endswith(":") and line[:-1].strip().upper().startswith("INSTANCE"):
                     if current_instance is not None:
                         self.instances.append(current_instance)
                     current_instance = {}
                     continue
 
-                # Solo procesa líneas clave=valor
+                # Procesa líneas tipo clave=valor
                 if "=" not in line:
                     continue
 
                 k, v = line.split("=", 1)
                 k, v = k.strip(), v.strip()
 
-                # Guarda clave-valor según contexto (global o instancia)
+                # Contexto de almacenamiento
                 if current_instance is not None:
                     current_instance[k] = v
                 else:
@@ -97,16 +129,20 @@ class Config:
                     else:
                         self.kv[k] = v
 
-        # Agrega la última instancia si existe
+        # Última instancia detectada
         if current_instance:
             self.instances.append(current_instance)
 
-    # ------------------------------------------------------------
-    # === VALIDACIÓN DE DUPLICADOS ===
-    # ------------------------------------------------------------
+    # ============================================================
+    # === VALIDACIÓN DE DUPLICADOS ===============================
+    # ============================================================
     def _validate_duplicates(self):
         """
-        Verifica si hay claves críticas duplicadas.
+        Verifica la existencia de claves críticas duplicadas.
+
+        Si alguna de las claves `DATASET`, `TARGET_COLUMN` o
+        `DEPENDENT_VARIABLE` aparece más de una vez, se lanza
+        una excepción indicando los valores repetidos.
         """
         critical = ("DATASET", "TARGET_COLUMN", "DEPENDENT_VARIABLE")
         for key in critical:
@@ -119,11 +155,12 @@ class Config:
                 )
                 raise ValueError(msg)
 
-    # ------------------------------------------------------------
-    # === PROPIEDADES PRINCIPALES ===
-    # ------------------------------------------------------------
+    # ============================================================
+    # === PROPIEDADES PRINCIPALES ================================
+    # ============================================================
     @property
     def dataset(self) -> str:
+        """Devuelve la ruta al archivo de dataset especificado en `input.txt`."""
         v = self.kv.get("DATASET", "")
         if isinstance(v, list):
             v = v[-1]
@@ -132,8 +169,8 @@ class Config:
     @property
     def sheet(self) -> Optional[str]:
         """
-        Devuelve el nombre de la hoja (sheet/hoja), detectando
-        claves en inglés o español.
+        Devuelve el nombre de la hoja dentro del archivo de datos.
+        Reconoce claves en inglés o español (SHEET, HOJA, SHEETS, etc.).
         """
         keys = {k.strip().upper(): v for k, v in self.kv.items()}
         posibles = ("SHEET", "HOJA", "SHEETS", "HOJAS", "SHEET_NAME", "PAGINA", "TAB")
@@ -145,15 +182,12 @@ class Config:
                 return val
         return None
 
-    # ------------------------------------------------------------
-    # === VARIABLES DEPENDIENTES / INDEPENDIENTES ===
-    # ------------------------------------------------------------
+    # ============================================================
+    # === VARIABLES DEPENDIENTES E INDEPENDIENTES ================
+    # ============================================================
     @property
     def target_column(self) -> Optional[str]:
-        """
-        Alias principal para columna objetivo.
-        Compatible con TARGET_COLUMN (Bayes) y DEPENDENT_VARIABLE (Regresión).
-        """
+        """Devuelve el nombre de la variable dependiente (`Y`), compatible con configuraciones previas."""
         v = self.kv.get("TARGET_COLUMN") or self.kv.get("DEPENDENT_VARIABLE")
         if isinstance(v, list):
             v = v[-1]
@@ -161,9 +195,7 @@ class Config:
 
     @property
     def dependent_variable(self) -> Optional[str]:
-        """
-        Alias explícito para compatibilidad con input.txt de regresión lineal.
-        """
+        """Alias explícito para la variable dependiente (`Y`)."""
         v = self.kv.get("DEPENDENT_VARIABLE")
         if isinstance(v, list):
             v = v[-1]
@@ -171,10 +203,7 @@ class Config:
 
     @property
     def attributes(self) -> Optional[List[str]]:
-        """
-        Atributos independientes (X₁..Xₙ).
-        Compatible con ATTRIBUTES (Bayes) e INDEPENDENT_VARIABLES (Regresión).
-        """
+        """Devuelve la lista de variables independientes, compatible con Bayes y Regresión Lineal."""
         raw = self.kv.get("ATTRIBUTES") or self.kv.get("INDEPENDENT_VARIABLES")
         if not raw:
             return None
@@ -184,9 +213,7 @@ class Config:
 
     @property
     def independent_variables(self) -> Optional[List[str]]:
-        """
-        Alias explícito para compatibilidad con input.txt de regresión lineal.
-        """
+        """Devuelve explícitamente las variables independientes definidas en `input.txt`."""
         raw = self.kv.get("INDEPENDENT_VARIABLES")
         if not raw:
             return None
@@ -194,23 +221,28 @@ class Config:
             raw = raw[-1]
         return [c.strip() for c in str(raw).split(",") if c.strip()]
 
-    # ------------------------------------------------------------
-    # === OPCIONES ADICIONALES ===
-    # ------------------------------------------------------------
+    # ============================================================
+    # === OPCIONES ADICIONALES ==================================
+    # ============================================================
     @property
     def use_all_attributes(self) -> bool:
+        """Determina si se deben usar todas las columnas del dataset excepto la variable dependiente."""
         return parse_bool(self.kv.get("USE_ALL_ATTRIBUTES", "true"))
 
     @property
     def report_path(self) -> Optional[str]:
+        """Ruta completa del archivo PDF de salida definido en la configuración."""
         v = self.kv.get("REPORT")
         if isinstance(v, list):
             v = v[-1]
         return v
 
-    # Claves heredadas del proyecto bayesiano (mantienen compatibilidad)
+    # ============================================================
+    # === CLAVES HEREDADAS (COMPATIBILIDAD) ======================
+    # ============================================================
     @property
     def laplace_alpha(self) -> float:
+        """Valor de suavizado Laplaciano heredado del sistema bayesiano (no usado en regresión)."""
         try:
             v = self.kv.get("LAPLACE_ALPHA", "0")
             if isinstance(v, list):
@@ -221,6 +253,7 @@ class Config:
 
     @property
     def numeric_mode(self) -> str:
+        """Modo de interpretación numérica (por compatibilidad con Bayes)."""
         v = self.kv.get("NUMERIC_MODE", "raw")
         if isinstance(v, list):
             v = v[-1]
@@ -228,6 +261,7 @@ class Config:
 
     @property
     def bins(self) -> int:
+        """Número de intervalos discretos (solo relevante en clasificación Bayesiana)."""
         try:
             v = self.kv.get("BINS", "5")
             if isinstance(v, list):
@@ -238,6 +272,7 @@ class Config:
 
     @property
     def discretize_strategy(self) -> str:
+        """Estrategia de discretización para valores numéricos (solo compatibilidad)."""
         v = self.kv.get("DISCRETIZE_STRATEGY", "quantile")
         if isinstance(v, list):
             v = v[-1]

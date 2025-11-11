@@ -1,10 +1,25 @@
 # Makefile
 # -----------------------------------------------------------------------
 # Descripción:
-# Automatiza la ejecución del proyecto linear-regression.
-# Incluye la creación del entorno virtual, instalación de dependencias,
-# ejecución del cálculo de regresión lineal (múltiple o simple)
-# y la compilación del reporte en PDF mediante LaTeX.
+# Automatiza el flujo completo del proyecto **Linear Regression**.
+# Este proyecto implementa un sistema de **Regresión Lineal** (simple y múltiple)
+# desarrollado en Python, que genera automáticamente un **reporte en PDF**
+# con los resultados teóricos, matrices y ecuaciones calculadas.
+#
+# Estructura general del flujo:
+#   1. Crea un entorno virtual e instala dependencias necesarias (make env).
+#   2. Ejecuta el análisis definido en input.txt (make run).
+#   3. Compila el archivo LaTeX a PDF (make latex o make pdf).
+#   4. Visualiza el reporte (make view).
+#
+# Incluye compatibilidad con datasets .csv, .xlsx y .ods, y genera un
+# reporte matemático completo con:
+#   - Modelo lineal general.
+#   - Derivadas parciales y ecuaciones normales.
+#   - Matrices (X, Xᵀ, XᵀX, Xᵀy, β).
+#   - Sustitución de valores y predicciones numéricas.
+#
+# Dependencias gestionadas en requirements.txt
 # -----------------------------------------------------------------------
 
 PYTHON         = python3

@@ -1,93 +1,113 @@
-# Inteligencia Artificial, 2026-1
-## Equipo 6
+# Linear Regression
+## Inteligencia Artificial · 2026-1  
+### Equipo 6
 
-### Integrantes
-· Fuentes Jiménez Yasbeck Dailanny  
-· Herrera Villalba Isaac  
-· Juárez García Yuliana  
-· Ruiz Bastián Óscar  
-· Sampayo Aguilar Cinthia Gloricel  
-· Velarde Valencia Josue  
+**Integrantes**
+- Fuentes Jiménez Yasbeck Dailanny  
+- Herrera Villalba Isaac  
+- Juárez García Yuliana  
+- Ruiz Bastián Óscar  
+- Sampayo Aguilar Cinthia Gloricel  
+- Velarde Valencia Josue  
 
 ---
 
-## Proyecto: Linear Regression
+## Descripción general
 
-### Descripción general
+Sistema de **Regresión Lineal (simple y múltiple)** implementado en **Python**, diseñado para el análisis de datasets numéricos y la generación automática de un **reporte técnico en formato PDF** con los resultados teóricos y computacionales del modelo.
 
-Este proyecto implementa un sistema de **Regresión Lineal (múltiple)** en **Python**, diseñado para analizar datasets en formato **CSV**, **XLSX** o **ODS**.  
-El programa ajusta una **función matemática del tipo**:
+El programa emplea el método de **Mínimos Cuadrados Ordinarios (Ordinary Least Squares, OLS)** para estimar el vector de parámetros β del modelo lineal general:
 
 \[
-y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \cdots + \beta_mx_m
+\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}
 \]
 
-mediante el método de **Mínimos Cuadrados Ordinarios (Ordinary Least Squares, OLS)**.  
-A partir del modelo calculado, se generan **predicciones numéricas** y un **reporte en PDF** con los pasos teóricos y cálculos detallados.
+El reporte resultante integra tanto la formulación matemática como las etapas de resolución y predicción, proporcionando una descripción completa del proceso de ajuste.
 
 ---
 
-### Características principales
+## Características principales
 
-- Lectura automática de archivos `.csv`, `.xlsx` y `.ods`.  
-- Detección automática del bloque de datos, encabezados y tipos válidos.  
-- Selección flexible de:
-  - Variable dependiente (*Y*).  
-  - Variables independientes (*X₁, X₂, ..., Xₙ*).  
-- Procesamiento automático de valores numéricos.  
-- Cálculo del **vector de coeficientes β** usando la ecuación normal:
+- Soporte para archivos de entrada en formato **CSV**, **XLSX** y **ODS**.  
+- Detección automática del bloque de datos y encabezados válidos.  
+- Selección flexible de variables dependientes (Y) e independientes (X₁, X₂, …, Xₘ).  
+- Procesamiento automático de valores numéricos y eliminación de filas no convertibles.  
+- Ejecución automática de:
+  - **Regresión lineal simple** cuando se especifica una sola variable X.  
+  - **Regresión lineal múltiple** cuando se definen dos o más variables X.  
+- Resolución mediante la ecuación normal:  
   \[
   \boldsymbol{\beta} = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top \mathbf{y}
   \]
-- Obtención de métricas de ajuste:
-  - **Intercepto (β₀)**  
-  - **Pendientes (β₁..βₙ)**  
-  - **Coeficiente de determinación (R²)**  
-- Soporte para múltiples instancias (valores de entrada) definidas en `input.txt`.  
-- Generación de **un único reporte PDF** con todos los pasos matemáticos por cada instancia:  
-  1. Modelo general.  
-  2. Función objetivo.  
-  3. Ecuaciones normales.  
-  4. Sustitución de valores y predicción numérica (ŷ).  
+- Generación de un único reporte PDF con todas las instancias y datasets procesados.  
+- Representación matricial detallada (X, Xᵀ, XᵀX, Xᵀy, (XᵀX)⁻¹, β).  
+- Cálculo del **coeficiente de determinación (R²)** e interpretación del grado de ajuste.  
+- Predicción numérica automática de ŷ mediante sustitución directa de valores.
 
 ---
 
-### Funcionamiento general
+## Funcionamiento general
 
-#### 1️⃣ Entrada: archivo `input.txt`
+El sistema se ejecuta a partir de un archivo de configuración `input.txt`, el cual define los parámetros de análisis y las instancias de evaluación.
 
-El archivo `input.txt` actúa como **fuente de configuración principal** del sistema.  
-En él se definen los parámetros de análisis, el dataset a utilizar y las instancias a evaluar.
-
-##### Estructura general
+Cada bloque de configuración contiene los siguientes campos:
 
 | Clave | Descripción |
 |-------|--------------|
 | `DATASET` | Ruta del archivo de datos (`.ods`, `.xlsx`, `.csv`). |
-| `HOJA` / `SHEET` | Nombre de la hoja (en caso de archivos Excel o LibreOffice). |
-| `DEPENDENT_VARIABLE` | Variable dependiente o de salida (*Y*). |
-| `INDEPENDENT_VARIABLES` | Variables independientes o predictoras (*X₁, X₂, …*). |
-| `USE_ALL_ATTRIBUTES` | Si es `true`, usa todas las columnas excepto *Y*. |
+| `SHEET` / `HOJA` | Nombre de la hoja dentro del archivo (opcional). |
+| `DEPENDENT_VARIABLE` | Variable dependiente o de salida (Y). |
+| `INDEPENDENT_VARIABLES` | Lista separada por comas de variables predictoras (X₁, X₂, …). |
+| `USE_ALL_ATTRIBUTES` | Si es `true`, utiliza todas las columnas excepto Y. |
 | `REPORT` | Ruta y nombre del archivo PDF a generar. |
-| `INSTANCE` | Una o más instancias con valores para predecir ŷ. |
+| `INSTANCE` | Conjunto de valores numéricos para generar predicciones ŷ. |
 
-##### Ejemplo de configuración activa
+El sistema permite incluir varios bloques `DATASET=` dentro del mismo archivo, generando un **reporte consolidado** con una sección independiente por dataset.
+
+---
+
+## Contenido del reporte generado
+
+Cada sección del PDF incluye los siguientes apartados:
+
+1. **Modelo lineal general**  
+   Presentación de la ecuación base y descripción de las variables.  
+
+2. **Desarrollo teórico**  
+   Formulación de la función objetivo, derivadas parciales y ecuaciones normales.  
+
+3. **Forma matricial**  
+   Representación de las matrices involucradas y solución del vector β.  
+
+4. **Coeficiente de determinación (R²)**  
+   Evaluación del ajuste y tabla interpretativa del nivel de correlación.  
+
+5. **Sustitución numérica y predicción (ŷ)**  
+   Sustitución de los valores de X en la ecuación final del modelo y cálculo del resultado.  
+
+---
+
+## Ejemplo de configuración
 
 ```txt
-DATASET=data/regresion_lineal_2_y_3_dimensiones.ods
-HOJA=Hoja5
-DEPENDENT_VARIABLE=y
-INDEPENDENT_VARIABLES=x1, x2
-USE_ALL_ATTRIBUTES=false
-REPORT=output/reporte_2D.pdf
+DATASET = data/regresion_6d.ods
+SHEET = Sheet1
+DEPENDENT_VARIABLE = Y
+INDEPENDENT_VARIABLES = X1, X2, X3, X4, X5
+USE_ALL_ATTRIBUTES = false
+REPORT = output/reporte.pdf
 
-# --- Instancia 1 ---
 INSTANCE:
-  x1=8
-  x2=10
+  X1 = 27
+  X2 = 7
+  X3 = 3
+  X4 = 2
+  X5 = 4
 
-# --- Instancia 2 ---
 INSTANCE:
-  x1=12
-  x2=15
+  X1 = 30
+  X2 = 8
+  X3 = 4
+  X4 = 3
+  X5 = 6
 
