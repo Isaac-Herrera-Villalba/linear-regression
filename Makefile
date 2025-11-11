@@ -19,7 +19,7 @@ MAIN_FILE      = $(SRC_DIR)/main.py
 PDF_READER     = okular
 PYTHON_MODULES = __pycache__
 
-LATEX_REPORT_NAME = reporte_all
+LATEX_REPORT_NAME = reporte*
 
 EXT           = ods
 

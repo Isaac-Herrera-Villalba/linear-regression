@@ -76,25 +76,41 @@ def _matrix_to_latex(M: np.ndarray, max_rows: int = 12, max_cols: int = 12) -> s
     return "\\begin{bmatrix}\n" + "\n".join(lines) + "\n\\end{bmatrix}"
 
 def dataset_preview_table(df: pd.DataFrame, max_rows: int = 15, max_cols: int = 8) -> str:
-    """Tabla de vista previa (truncada) del dataset."""
+    """
+    Tabla de vista previa (truncada) del dataset.
+    Muestra también el número de filas y columnas totales y una nota si fue truncada.
+    """
     rows, cols = df.shape
     truncated = rows > max_rows or cols > max_cols
+
+    # Prepara vista truncada si aplica
     df_disp = df.iloc[:max_rows, :max_cols].copy()
     df_disp.columns = [str(c).replace("_", "\\_") for c in df_disp.columns]
+
     header_fmt = " ".join(["l"] * len(df_disp.columns))
     lines = [
+        f"\\textit{{Dimensiones del dataset:}} ${rows}\\,\\text{{filas}} \\times {cols}\\,\\text{{columnas}}$\\\\[0.3em]",
         "\\begin{tabular}{" + header_fmt + "}",
         "\\toprule",
         " & ".join(df_disp.columns) + " \\\\",
         "\\midrule",
     ]
+
     for _, row in df_disp.iterrows():
         vals = [str(v).replace("_", "\\_") for v in row.values]
         lines.append(" & ".join(vals) + " \\\\")
+
     lines.append("\\bottomrule")
     lines.append("\\end{tabular}")
+
     if truncated:
-        lines.append("\\\\[0.3em]\\textit{Nota: el dataset es demasiado grande, consulte el archivo original.}")
+        lines.append(
+            f"\\\\[0.3em]\\textit{{Nota: el dataset mostrado fue truncado a "
+            f"{max_rows} filas y {max_cols} columnas. "
+            f"El dataset completo contiene {rows} filas y {cols} columnas.}}"
+            "\\\\[0.3em]\\textit{Consulte el archivo original para ver la tabla completa.}"
+        )
+
     return "\n".join(lines)
 
 def render_all_instances_pdf(out_pdf: str, latex_block: str):

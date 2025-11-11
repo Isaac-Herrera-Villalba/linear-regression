@@ -60,51 +60,37 @@ INSTANCE:
 ──────────────────────────────────────────────────────────────────────────────── */
 
 /* ==============================
-   Dataset: regresion_lineal_2_y_3_dimensiones.ods (Hoja5)
-   ============================== */
-#DATASET=data/regresion_lineal_2_y_3_dimensiones.ods
-#HOJA=Hoja5
-#DEPENDENT_VARIABLE=y
-#INDEPENDENT_VARIABLES=x1, x2
-#USE_ALL_ATTRIBUTES=false
-#REPORT=output/reporte.pdf
-
-## --- Instancia 1 ---
-#INSTANCE:
-#  x1=8
-#  x2=10
-#
-## --- Instancia 2 ---
-#INSTANCE:
-#  x1=12
-#  x2=15
-
-
-
-
-
-/* ==============================
    Dataset: regresion_6d.ods (Hoja1)
    ============================== */
-DATASET=data/regresion_6d.ods
-HOJA=Sheet1
-DEPENDENT_VARIABLE=Y
-INDEPENDENT_VARIABLES=X1, X2, X3, X4, X5
-USE_ALL_ATTRIBUTES=false
+DATASET = data/regresion_6d.ods
+SHEET = Sheet1
+DEPENDENT_VARIABLE = Y
+INDEPENDENT_VARIABLES = X1, X2, X3, X4, X5
+USE_ALL_ATTRIBUTES = false
 REPORT=output/reporte.pdf
 
 ## --- Instancia 1 ---
 INSTANCE:
-  X1=27
-  X2=7
-  X3=3
-  X4=2
-  X5=4
+  X1 = 27
+  X2 = 7
+  X3 = 3
+  X4 = 2
+  X5 = 4
 
 INSTANCE:
-  X1=30
-  X2=8
-  X3=4
-  X4=3
-  X5=6
+  X1 = 30
+  X2 = 8
+  X3 = 4
+  X4 = 3
+  X5 = 6
+
+DATASET = data/regresion_2d_3d.ods
+SHEET = Sheet3
+DEPENDENT_VARIABLE = Y
+INDEPENDENT_VARIABLES = X
+USE_ALL_ATTRIBUTES = false
+REPORT=output/reporte.pdf
+
+INSTANCE:
+  X = 2
 
