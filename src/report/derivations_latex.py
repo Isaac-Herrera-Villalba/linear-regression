@@ -86,11 +86,10 @@ def build_derivation_block(df: pd.DataFrame, y_col: str, x_cols: List[str]) -> s
     )
 
     # --- Ecuaciones normales simbólicas ---
-    lines.append(r"\paragraph{Ecuaciones normales (forma de sumas).}")
-    lines.append(r"\begin{align*}")
+    lines.append(r"\begin{dmath*}")   # usa breqn
     for s in sym:
         lines.append(s.replace("β", r"\beta").replace("Σ", r"\sum") + r" \\")
-    lines.append(r"\end{align*}")
+    lines.append(r"\end{dmath*}")
 
     # --- Sustitución numérica de sumatorias ---
     lines.append(r"\paragraph{Sustitución numérica de sumatorias (con el dataset).}")

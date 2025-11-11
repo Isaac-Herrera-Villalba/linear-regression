@@ -5,23 +5,10 @@
  src/core/config.py
  ------------------------------------------------------------
  Módulo encargado de la lectura, interpretación y validación del
- archivo de configuración `input.txt`, utilizado por el sistema
- de Regresión Lineal.
+ archivo de configuración `input.txt` para el sistema de regresión lineal.
 
- Implementa una clase de alto nivel (`Config`) que abstrae el
- manejo de claves globales, instancias y alias entre proyectos,
- permitiendo compatibilidad con configuraciones previas de otros
- módulos (por ejemplo, clasificación Bayesiana).
-
- Características principales:
-   - Lectura estructurada de pares clave=valor.
-   - Soporte para comentarios de bloque (/* ... */) y línea (# ...).
-   - Soporte para múltiples instancias (bloques INSTANCE:).
-   - Alias automáticos para variables dependientes e independientes.
-   - Validación de duplicados críticos en la configuración.
-
- Dependencia:
-   - src.core.utils.parse_bool
+ Ahora soporta múltiples bloques `DATASET=` dentro del mismo archivo,
+ cada uno con su propio conjunto de parámetros e instancias.
  ------------------------------------------------------------
 """
 
@@ -33,17 +20,8 @@ from src.core.utils import parse_bool
 
 class Config:
     """
-    Representa una configuración cargada desde un archivo `input.txt`.
-
-    Esta clase administra la lectura y almacenamiento de pares clave=valor
-    definidos en el archivo de configuración, además de manejar múltiples
-    instancias (`INSTANCE:`) y realizar validaciones sobre duplicados de
-    parámetros críticos (por ejemplo, `DATASET` o `DEPENDENT_VARIABLE`).
-
-    Cada instancia del objeto contiene:
-      - Un diccionario de claves globales (`self.kv`).
-      - Una lista de instancias (`self.instances`), donde cada una
-        corresponde a un conjunto de valores específicos para predicción.
+    Gestiona la lectura de un archivo `input.txt` que puede contener
+    múltiples datasets, cada uno con su propio conjunto de instancias.
     """
 
     def __init__(self, path: str):
@@ -51,231 +29,100 @@ class Config:
         if not self.path.exists():
             raise FileNotFoundError(f"No se encontró el archivo de entrada: {path}")
 
-        self.kv: Dict[str, str] = {}
-        self.instances: List[Dict[str, str]] = []
+        # Lista de bloques de configuración completos
+        self.blocks: List[Dict] = []
 
-        # Proceso de carga y validación
+        # Proceso de carga
         self._parse()
-        self._validate_duplicates()
 
     # ============================================================
-    # === PARSEO DE ARCHIVO DE CONFIGURACIÓN ======================
+    # === PARSEO DE BLOQUES ======================================
     # ============================================================
     def _parse(self):
         """
-        Lee y analiza un archivo de configuración `input.txt`.
-
-        Reconoce:
-          - Comentarios de bloque (/* ... */) y de línea (# ...).
-          - Pares clave=valor.
-          - Bloques de instancias (`INSTANCE:`) con sus atributos.
-
-        Flujo lógico:
-          1. El archivo se recorre línea por línea.
-          2. Se eliminan o ignoran comentarios y líneas vacías.
-          3. Cuando se detecta un encabezado `INSTANCE:`, se inicia
-             un nuevo bloque de instancia.
-          4. Las líneas dentro del bloque se almacenan como pares clave=valor.
-          5. Los valores globales se almacenan en `self.kv`.
+        Lee y separa múltiples bloques `DATASET=` dentro del mismo archivo.
+        Cada bloque mantiene sus claves y sus instancias asociadas.
         """
+        with self.path.open("r", encoding="utf-8") as f:
+            lines = [l.strip() for l in f.readlines()]
+
+        current_block = None
         current_instance = None
         in_block_comment = False
 
-        with self.path.open("r", encoding="utf-8") as f:
-            for raw in f:
-                line = raw.strip()
+        for raw in lines:
+            line = raw.strip()
+            if not line:
+                continue
 
-                # Manejo de comentarios /* ... */
-                if "/*" in line and "*/" in line:
-                    line = line.split("/*", 1)[0] + line.split("*/", 1)[1]
-                elif "/*" in line:
-                    in_block_comment = True
-                    line = line.split("/*", 1)[0]
-                elif "*/" in line:
-                    in_block_comment = False
-                    line = line.split("*/", 1)[1]
+            # Comentarios de bloque /* ... */
+            if "/*" in line and "*/" in line:
+                line = line.split("/*", 1)[0] + line.split("*/", 1)[1]
+            elif "/*" in line:
+                in_block_comment = True
+                line = line.split("/*", 1)[0]
+            elif "*/" in line:
+                in_block_comment = False
+                line = line.split("*/", 1)[1]
+            if in_block_comment:
+                continue
 
-                if in_block_comment:
-                    continue
+            # Ignora comentarios de línea
+            if line.startswith("#"):
+                continue
 
-                # Ignora líneas vacías o comentarios de línea
-                if not line or line.startswith("#"):
-                    continue
+            # Nuevo bloque de DATASET
+            if line.upper().startswith("DATASET"):
+                # Si ya había un bloque activo, lo guardamos
+                if current_block:
+                    if current_instance:
+                        current_block["INSTANCES"].append(current_instance)
+                        current_instance = None
+                    self.blocks.append(current_block)
+                current_block = {"KV": {}, "INSTANCES": []}
+                key, val = line.split("=", 1)
+                current_block["KV"][key.strip()] = val.strip()
+                continue
 
-                # Detección de bloque INSTANCE:
-                if line.endswith(":") and line[:-1].strip().upper().startswith("INSTANCE"):
-                    if current_instance is not None:
-                        self.instances.append(current_instance)
-                    current_instance = {}
-                    continue
+            # Nuevo bloque de instancia
+            if line.endswith(":") and "INSTANCE" in line.upper():
+                if current_instance:
+                    current_block["INSTANCES"].append(current_instance)
+                current_instance = {}
+                continue
 
-                # Procesa líneas tipo clave=valor
-                if "=" not in line:
-                    continue
-
-                k, v = line.split("=", 1)
-                k, v = k.strip(), v.strip()
-
-                # Contexto de almacenamiento
+            # Línea clave=valor
+            if "=" in line:
+                key, val = [x.strip() for x in line.split("=", 1)]
                 if current_instance is not None:
-                    current_instance[k] = v
+                    current_instance[key] = val
                 else:
-                    if k in self.kv:
-                        prev = self.kv[k]
-                        if not isinstance(prev, list):
-                            self.kv[k] = [prev, v]
-                        else:
-                            self.kv[k].append(v)
-                    else:
-                        self.kv[k] = v
+                    current_block["KV"][key] = val
 
-        # Última instancia detectada
-        if current_instance:
-            self.instances.append(current_instance)
+        # Cierra últimos bloques abiertos
+        if current_instance and current_block:
+            current_block["INSTANCES"].append(current_instance)
+        if current_block:
+            self.blocks.append(current_block)
 
     # ============================================================
-    # === VALIDACIÓN DE DUPLICADOS ===============================
+    # === UTILIDADES DE BLOQUES ==================================
     # ============================================================
-    def _validate_duplicates(self):
-        """
-        Verifica la existencia de claves críticas duplicadas.
-
-        Si alguna de las claves `DATASET`, `TARGET_COLUMN` o
-        `DEPENDENT_VARIABLE` aparece más de una vez, se lanza
-        una excepción indicando los valores repetidos.
-        """
-        critical = ("DATASET", "TARGET_COLUMN", "DEPENDENT_VARIABLE")
-        for key in critical:
-            val = self.kv.get(key)
-            if isinstance(val, list):
-                msg = (
-                    f"[ERROR] Se detectaron múltiples definiciones de '{key}' en {self.path.name}:\n"
-                    f"         {val}\n"
-                    f"         Mantén solo una definición válida."
-                )
-                raise ValueError(msg)
+    def get_blocks(self) -> List[Dict]:
+        """Devuelve la lista completa de bloques (DATASET + INSTANCES)."""
+        return self.blocks
 
     # ============================================================
-    # === PROPIEDADES PRINCIPALES ================================
+    # === ACCESOR COMPATIBLE (modo simple) =======================
     # ============================================================
-    @property
-    def dataset(self) -> str:
-        """Devuelve la ruta al archivo de dataset especificado en `input.txt`."""
-        v = self.kv.get("DATASET", "")
+    @staticmethod
+    def get_value(kv: Dict[str, str], key: str, default: str | None = None) -> Optional[str]:
+        v = kv.get(key)
         if isinstance(v, list):
             v = v[-1]
-        return v.strip()
+        return v if v is not None else default
 
-    @property
-    def sheet(self) -> Optional[str]:
-        """
-        Devuelve el nombre de la hoja dentro del archivo de datos.
-        Reconoce claves en inglés o español (SHEET, HOJA, SHEETS, etc.).
-        """
-        keys = {k.strip().upper(): v for k, v in self.kv.items()}
-        posibles = ("SHEET", "HOJA", "SHEETS", "HOJAS", "SHEET_NAME", "PAGINA", "TAB")
-        for key in posibles:
-            if key in keys:
-                val = keys[key]
-                if isinstance(val, list):
-                    val = val[-1]
-                return val
-        return None
-
-    # ============================================================
-    # === VARIABLES DEPENDIENTES E INDEPENDIENTES ================
-    # ============================================================
-    @property
-    def target_column(self) -> Optional[str]:
-        """Devuelve el nombre de la variable dependiente (`Y`), compatible con configuraciones previas."""
-        v = self.kv.get("TARGET_COLUMN") or self.kv.get("DEPENDENT_VARIABLE")
-        if isinstance(v, list):
-            v = v[-1]
-        return v
-
-    @property
-    def dependent_variable(self) -> Optional[str]:
-        """Alias explícito para la variable dependiente (`Y`)."""
-        v = self.kv.get("DEPENDENT_VARIABLE")
-        if isinstance(v, list):
-            v = v[-1]
-        return v
-
-    @property
-    def attributes(self) -> Optional[List[str]]:
-        """Devuelve la lista de variables independientes, compatible con Bayes y Regresión Lineal."""
-        raw = self.kv.get("ATTRIBUTES") or self.kv.get("INDEPENDENT_VARIABLES")
-        if not raw:
-            return None
-        if isinstance(raw, list):
-            raw = raw[-1]
-        return [c.strip() for c in str(raw).split(",") if c.strip()]
-
-    @property
-    def independent_variables(self) -> Optional[List[str]]:
-        """Devuelve explícitamente las variables independientes definidas en `input.txt`."""
-        raw = self.kv.get("INDEPENDENT_VARIABLES")
-        if not raw:
-            return None
-        if isinstance(raw, list):
-            raw = raw[-1]
-        return [c.strip() for c in str(raw).split(",") if c.strip()]
-
-    # ============================================================
-    # === OPCIONES ADICIONALES ==================================
-    # ============================================================
-    @property
-    def use_all_attributes(self) -> bool:
-        """Determina si se deben usar todas las columnas del dataset excepto la variable dependiente."""
-        return parse_bool(self.kv.get("USE_ALL_ATTRIBUTES", "true"))
-
-    @property
-    def report_path(self) -> Optional[str]:
-        """Ruta completa del archivo PDF de salida definido en la configuración."""
-        v = self.kv.get("REPORT")
-        if isinstance(v, list):
-            v = v[-1]
-        return v
-
-    # ============================================================
-    # === CLAVES HEREDADAS (COMPATIBILIDAD) ======================
-    # ============================================================
-    @property
-    def laplace_alpha(self) -> float:
-        """Valor de suavizado Laplaciano heredado del sistema bayesiano (no usado en regresión)."""
-        try:
-            v = self.kv.get("LAPLACE_ALPHA", "0")
-            if isinstance(v, list):
-                v = v[-1]
-            return float(v)
-        except Exception:
-            return 0.0
-
-    @property
-    def numeric_mode(self) -> str:
-        """Modo de interpretación numérica (por compatibilidad con Bayes)."""
-        v = self.kv.get("NUMERIC_MODE", "raw")
-        if isinstance(v, list):
-            v = v[-1]
-        return v
-
-    @property
-    def bins(self) -> int:
-        """Número de intervalos discretos (solo relevante en clasificación Bayesiana)."""
-        try:
-            v = self.kv.get("BINS", "5")
-            if isinstance(v, list):
-                v = v[-1]
-            return int(v)
-        except Exception:
-            return 5
-
-    @property
-    def discretize_strategy(self) -> str:
-        """Estrategia de discretización para valores numéricos (solo compatibilidad)."""
-        v = self.kv.get("DISCRETIZE_STRATEGY", "quantile")
-        if isinstance(v, list):
-            v = v[-1]
-        return v
-# ---------------------------------------------------------------------------
+    @staticmethod
+    def get_bool(kv: Dict[str, str], key: str, default: bool = False) -> bool:
+        return parse_bool(kv.get(key, str(default)))
 

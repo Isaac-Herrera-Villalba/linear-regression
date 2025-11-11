@@ -163,24 +163,17 @@ def dataset_preview_table(df: pd.DataFrame, max_rows: int = 15, max_cols: int = 
 # ======================================================================
 # === RENDERIZACIÓN DE PDF =============================================
 # ======================================================================
-
 def render_all_instances_pdf(out_pdf: str, latex_block: str):
     """
-    Genera un único documento PDF con todas las instancias concatenadas.
+    Genera un documento PDF con todas las instancias concatenadas,
+    compilando con pdflatex en modo silencioso.
 
-    Parámetros
-    ----------
-    out_pdf : str
-        Ruta de salida del PDF final.
-    latex_block : str
-        Bloque LaTeX con el contenido de todas las secciones.
-
-    Detalles
-    ---------
-    - Crea automáticamente el archivo .tex correspondiente.
-    - Intenta compilar con `xelatex` y, en caso de fallo, con `pdflatex`.
-    - Si ninguna compilación tiene éxito, se conserva el archivo .tex.
+    - Ejecuta dos pasadas para resolver referencias.
+    - Oculta toda la salida interna de LaTeX.
+    - Muestra solo el resultado final (OK / WARN / ERROR).
     """
+    from subprocess import run, DEVNULL, PIPE, STDOUT
+
     out_path = Path(out_pdf)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tex_path = out_path.with_suffix(".tex")
@@ -188,19 +181,23 @@ def render_all_instances_pdf(out_pdf: str, latex_block: str):
     tex_content = LATEX_PREAMBLE_ALL + latex_block + LATEX_POSTAMBLE_ALL
     tex_path.write_text(tex_content, encoding="utf-8")
 
-    for compiler in ("xelatex", "pdflatex"):
-        try:
-            subprocess.run(
-                [compiler, "-interaction=nonstopmode", tex_path.name],
-                cwd=tex_path.parent,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            print(f"[OK] Reporte PDF generado con {compiler}: {out_pdf}")
-            return
-        except Exception:
-            continue
+    success = False
+    for i in range(2):  # dos pasadas
+        result = run(
+            ["pdflatex", "-interaction=nonstopmode", tex_path.name],
+            cwd=tex_path.parent,
+            stdout=DEVNULL,  # <── no imprime salida de LaTeX
+            stderr=STDOUT,
+        )
+        if result.returncode != 0:
+            print(f"[ERROR] Falla en compilación LaTeX (pasada {i+1}).")
+            success = False
+            break
+        success = True
 
-    print(f"[WARN] No se pudo compilar el PDF; archivo TEX disponible en: {tex_path}")
+    pdf_path = out_path.parent / tex_path.with_suffix(".pdf").name
+    if success and pdf_path.exists():
+        print(f"[OK] Reporte PDF generado exitosamente en: {pdf_path}")
+    else:
+        print(f"[WARN] No se pudo generar el PDF; revisa output/reporte.log si existe.")
 

@@ -107,7 +107,6 @@ def run_simple_regression(
     # Resumen del dataset
     rows, cols = df.shape
     lines.append(r"\subsection*{Resumen del dataset}")
-    lines.append(rf"\textit{{Dimensiones del dataset:}} {rows} filas $\times$ {cols} columnas\\[0.5em]")
     lines.append(dataset_preview_table(df))
 
     # Paso 1: Modelo general

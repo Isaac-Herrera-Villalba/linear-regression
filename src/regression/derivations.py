@@ -4,14 +4,8 @@
 """
  src/regression/derivations.py
  ------------------------------------------------------------
- Cálculo matemático y simbólico del desarrollo teórico de la
- regresión lineal múltiple. No genera LaTeX directamente, sino
- estructuras con la información necesaria para formatear el reporte.
-
- Incluye:
-   - Cálculo de sumatorias.
-   - Derivadas parciales (simbólicas).
-   - Ecuaciones normales (simbólicas y numéricas).
+ Genera las ecuaciones simbólicas y numéricas del desarrollo
+ teórico de la regresión lineal múltiple, en notación LaTeX pura.
  ------------------------------------------------------------
 """
 
@@ -23,13 +17,7 @@ import pandas as pd
 
 # ------------------------------------------------------------
 def compute_sums(df: pd.DataFrame, y_col: str, x_cols: List[str]) -> Dict:
-    """
-    Calcula todas las sumatorias requeridas para construir las
-    ecuaciones normales.
-
-    Retorna un diccionario con:
-      n, m, sum_y, sum_y2, sum_x, sum_xx, sum_xy
-    """
+    """Calcula todas las sumatorias requeridas para las ecuaciones normales."""
     y = pd.to_numeric(df[y_col], errors="coerce").to_numpy(dtype=float)
     X = df[x_cols].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
     n, m = X.shape
@@ -49,19 +37,21 @@ def compute_sums(df: pd.DataFrame, y_col: str, x_cols: List[str]) -> Dict:
 # ------------------------------------------------------------
 def normal_equations_symbolic(x_cols: List[str]) -> List[str]:
     """
-    Devuelve las ecuaciones normales en forma simbólica (sumatorias).
+    Devuelve las ecuaciones normales en forma simbólica LaTeX segura.
+    Ejemplo:
+      \sum y_i = n\beta_0 + \beta_1\sum x_i1 + \beta_2\sum x_i2 + ...
     """
     m = len(x_cols)
     eqs = []
 
-    rhs = "n β₀" + "".join([f" + β{j} Σxᵢ{j}" for j in range(1, m + 1)])
-    eqs.append(f"Σyᵢ = {rhs}")
+    rhs = "n\\beta_0" + "".join([f" + \\beta_{j}\\sum x_i{j}" for j in range(1, m + 1)])
+    eqs.append(f"\\sum y_i = {rhs}")
 
     for k in range(1, m + 1):
-        rhs_k = f"β₀ Σxᵢ{k}" + "".join(
-            [f" + β{j} Σxᵢ{k}xᵢ{j}" for j in range(1, m + 1)]
+        rhs_k = f"\\beta_0\\sum x_i{k}" + "".join(
+            [f" + \\beta_{j}\\sum x_i{k}x_i{j}" for j in range(1, m + 1)]
         )
-        eqs.append(f"Σxᵢ{k}yᵢ = {rhs_k}")
+        eqs.append(f"\\sum x_i{k}y_i = {rhs_k}")
 
     return eqs
 
@@ -69,9 +59,8 @@ def normal_equations_symbolic(x_cols: List[str]) -> List[str]:
 # ------------------------------------------------------------
 def normal_equations_numeric(sums: Dict, x_cols: List[str]) -> List[str]:
     """
-    Sustituye valores numéricos en las ecuaciones normales.
-
-    Retorna una lista de cadenas numéricas representando las ecuaciones.
+    Sustituye los valores numéricos dentro de las ecuaciones normales.
+    Todas las expresiones se devuelven en formato LaTeX seguro.
     """
     n, m = sums["n"], len(x_cols)
     sum_y = sums["sum_y"]
@@ -82,15 +71,15 @@ def normal_equations_numeric(sums: Dict, x_cols: List[str]) -> List[str]:
     lines = []
 
     # Ecuación para β₀
-    rhs_terms = [f"{n}β₀"] + [f"{sum_x[j - 1]}β{j}" for j in range(1, m + 1)]
-    eq0 = f"{sum_y} = " + " + ".join(rhs_terms)
+    rhs_terms = [f"{n}\\beta_0"] + [f"{sum_x[j - 1]}\\beta_{j}" for j in range(1, m + 1)]
+    eq0 = f"\\sum y_i = " + " + ".join(rhs_terms)
     lines.append(eq0)
 
     # Ecuaciones para β₁..βₘ
     for k in range(1, m + 1):
-        rhs_k = [f"{sum_x[k - 1]}β₀"]
-        rhs_k += [f"{sum_xx[k - 1][j - 1]}β{j}" for j in range(1, m + 1)]
-        eq = f"{sum_xy[k - 1]} = " + " + ".join(rhs_k)
+        rhs_k = [f"{sum_x[k - 1]}\\beta_0"]
+        rhs_k += [f"{sum_xx[k - 1][j - 1]}\\beta_{j}" for j in range(1, m + 1)]
+        eq = f"\\sum x_i{k}y_i = " + " + ".join(rhs_k)
         lines.append(eq)
 
     return lines

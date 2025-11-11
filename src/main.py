@@ -4,257 +4,142 @@
 """
  src/main.py
  ------------------------------------------------------------
- Punto de entrada del sistema de Regresión Lineal.
+ Punto de entrada principal del sistema de Regresión Lineal.
 
- Funcionalidad principal:
-   - Lee y valida uno o varios bloques de configuración desde `input.txt`.
-   - Carga datasets (.csv, .xlsx, .ods) y detecta encabezados/datos reales.
-   - Selecciona columnas Y y X₁..Xₘ según la configuración.
-   - Efectúa preprocesamiento numérico (conversión a float y eliminación de NaN).
-   - Detecta automáticamente el caso de regresión simple (1 X) o múltiple (≥2 X).
-   - Genera bloques LaTeX por instancia (una sección por instancia).
-   - Compila un único PDF con todas las instancias procesadas.
+ - Lee y procesa el archivo de configuración `input.txt`.
+ - Carga múltiples datasets (uno por bloque `DATASET=`).
+ - Ejecuta el análisis de regresión lineal simple o múltiple.
+ - Genera un único reporte PDF unificado con todas las instancias.
 
- Notas de diseño:
-   - La lógica de regresión reside en `src/regression/`.
-   - La generación de LaTeX y compilación a PDF reside en `src/report/`.
-   - Este módulo solo orquesta el flujo de datos y la selección de rutas.
+ Estructura del flujo:
+   1. Leer configuración global.
+   2. Por cada bloque de dataset:
+        a) Cargar datos y hoja especificada.
+        b) Preprocesar columnas numéricas.
+        c) Ejecutar regresión y generar bloque LaTeX.
+   3. Concatenar todos los bloques y generar un único PDF.
  ------------------------------------------------------------
 """
 
 from __future__ import annotations
 import sys
-import unicodedata
-from typing import Dict, List, Tuple
 from pathlib import Path
-
-import pandas as pd
 
 from src.core.config import Config
 from src.core.data_extractor.loader import load_dataset
 from src.core.data_extractor.preprocess_regression import ensure_numeric_subset
-from src.regression.linear_regression import run_linear_regression  # (usado para typing/consistencia)
-from src.regression.simple_regression import run_simple_regression
 from src.report.report_builder import build_full_report_block
 from src.report.report_latex import render_all_instances_pdf
 
 
-# ------------------------------------------------------------
-# Utilidades internas
-# ------------------------------------------------------------
-def normalize_str(s: str) -> str:
-    """
-    Normaliza cadenas para búsqueda insensible a mayúsculas/acentos.
+# ============================================================
+# === PUNTO DE ENTRADA PRINCIPAL ==============================
+# ============================================================
 
-    Proceso:
-      - Trim.
-      - Minúsculas.
-      - Normalización Unicode (NFD) y eliminación de marcas diacríticas.
-
-    Ejemplos:
-      "  X_Áreas  " -> "x_areas"
-    """
-    s = str(s).strip().lower()
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s)
-        if unicodedata.category(c) != "Mn"
-    )
-
-
-def parse_multiple_datasets(path: str) -> List[Config]:
-    """
-    Divide `input.txt` en múltiples secciones de configuración, cada una
-    comenzando con la clave `DATASET`, y construye un objeto `Config`
-    por sección.
-
-    Reglas:
-      - Se considera el inicio de un bloque al encontrar una línea que
-        comience con "DATASET" (ignorando espacios/tabs).
-      - Solo se agrega un bloque si contiene al menos una línea DATASET.
-
-    Retorna
-    -------
-    List[Config]
-        Lista de configuraciones independientes (una por dataset).
-    """
-    sections: List[Path] = []
-    content = Path(path).read_text(encoding="utf-8").splitlines()
-
-    temp, idx = [], 1
-    for line in content:
-        if line.strip().upper().startswith("DATASET"):
-            # Guarda bloque previo (si tenía DATASET)
-            if temp and any("DATASET" in l.upper() for l in temp):
-                subfile = Path(f"/tmp/config_part_{idx}.txt")
-                subfile.write_text("\n".join(temp), encoding="utf-8")
-                sections.append(subfile)
-                temp, idx = [], idx + 1
-        temp.append(line)
-
-    # Último bloque (si aplica)
-    if temp and any("DATASET" in l.upper() for l in temp):
-        subfile = Path(f"/tmp/config_part_{idx}.txt")
-        subfile.write_text("\n".join(temp), encoding="utf-8")
-        sections.append(subfile)
-
-    cfgs = [Config(str(p)) for p in sections]
-    return cfgs
-
-
-def select_columns(df: pd.DataFrame, cfg: Config) -> Tuple[List[str], str, Dict[str, str]]:
-    """
-    Determina las columnas Y (dependiente) y X (independientes) a partir
-    del DataFrame y de la configuración.
-
-    Estrategia:
-      - Si no se especifica la dependiente, se usa la última columna.
-      - Si `USE_ALL_ATTRIBUTES=true`, las X serán todas las columnas menos Y.
-      - Si se especifican X explícitas y `USE_ALL_ATTRIBUTES=false`, se mapean
-        por nombre normalizado (tolerante a tildes/cambios de mayúsculas).
-
-    Validaciones:
-      - Debe haber al menos 1 X y 1 Y.
-
-    Retorna
-    -------
-    (x_cols, y, normalized_cols)
-      x_cols : List[str]  -> columnas X reales en el DataFrame (orden final)
-      y      : str        -> columna Y real
-      normalized_cols : Dict[str, str] -> mapa nombre_normalizado -> nombre_real
-    """
-    cols = list(df.columns)
-    normalized_cols = {normalize_str(c): c for c in cols}
-
-    # Variable dependiente (Y)
-    y_key = cfg.target_column or getattr(cfg, "dependent_variable", None)
-    if not y_key:
-        y = cols[-1]  # fallback: última columna
-    else:
-        nk = normalize_str(y_key)
-        if nk not in normalized_cols:
-            raise ValueError(
-                f"La columna dependiente '{y_key}' no existe.\nColumnas disponibles: {cols}"
-            )
-        y = normalized_cols[nk]
-
-    # Variables independientes (X)
-    x_alias = cfg.attributes or getattr(cfg, "independent_variables", None)
-    if x_alias and not cfg.use_all_attributes:
-        x_cols = [
-            normalized_cols[normalize_str(c)]
-            for c in x_alias
-            if normalize_str(c) in normalized_cols and normalized_cols[normalize_str(c)] != y
-        ]
-    else:
-        x_cols = [c for c in cols if c != y]
-
-    if len(x_cols) < 1:
-        raise ValueError("Se requieren ≥ 2 columnas totales (al menos 1 X + 1 Y).")
-
-    return x_cols, y, normalized_cols
-
-
-# ------------------------------------------------------------
-# Main
-# ------------------------------------------------------------
 def main():
     """
-    Orquesta el flujo completo:
-      - Lee `input.txt` desde argv[1].
-      - Procesa cada dataset y sus instancias.
-      - Selecciona modo simple/múltiple.
-      - Concatena bloques LaTeX y compila un PDF unificado.
+    Ejecuta el flujo completo del sistema de Regresión Lineal.
     """
-    if len(sys.argv) != 2:
-        print("Uso: python -m src.main input.txt")
+    cfg_path = Path("input.txt")
+    if not cfg_path.exists():
+        print(f"[ERROR] No se encontró el archivo de configuración: {cfg_path}")
         sys.exit(1)
 
-    input_path = sys.argv[1]
+    # === Leer configuración ===
+    config = Config(str(cfg_path))
+    blocks = config.get_blocks()
 
-    # Parseo de múltiples datasets
-    try:
-        configs = parse_multiple_datasets(input_path)
-    except Exception as e:
-        print(f"[ERROR] No fue posible leer/parsing el archivo de entrada: {e}")
+    if not blocks:
+        print("[ERROR] No se detectaron bloques válidos en el archivo de configuración.")
         sys.exit(1)
 
-    if not configs:
-        print("[ERROR] No se detectó ningún bloque de configuración con DATASET=")
-        sys.exit(1)
+    # === Variables acumulativas ===
+    all_latex_blocks = ""
+    global_index = 1
+    final_report_path = None
 
-    all_instances_blocks: List[str] = []
-    instance_counter = 1
+    print(f"[INFO] Se detectaron {len(blocks)} bloques de dataset en {cfg_path.name}")
 
-    for cfg in configs:
-        print(f"=== Procesando dataset: {cfg.dataset} ===")
+    # === Procesar cada bloque (DATASET + INSTANCES) ===
+    for i, block in enumerate(blocks, 1):
+        kv = block["KV"]
+        instances = block["INSTANCES"]
 
-        # Validación de dataset
-        if not cfg.dataset or not Path(cfg.dataset).exists():
-            print(f"[WARN] Dataset inválido o no encontrado: {cfg.dataset}")
+        dataset_path = kv.get("DATASET")
+        sheet_name = kv.get("SHEET")
+        y_col = kv.get("DEPENDENT_VARIABLE")
+        x_cols_raw = kv.get("INDEPENDENT_VARIABLES")
+        report_path = kv.get("REPORT", "output/reporte.pdf")
+        final_report_path = report_path
+
+        if not dataset_path or not y_col or not x_cols_raw:
+            print(f"[WARN] Bloque {i}: configuración incompleta, se omite.")
             continue
 
-        # Carga de datos (como texto para detección de tabla/encabezados)
-        df = load_dataset(cfg.dataset, cfg.sheet).astype(str)
+        x_cols = [x.strip() for x in x_cols_raw.split(",") if x.strip()]
 
-        # Selección de columnas
+        print(f"\n=== Procesando dataset {i}/{len(blocks)} ===")
+        print(f"[INFO] Archivo: {dataset_path}")
+        print(f"[INFO] Hoja: {sheet_name}")
+        print(f"[INFO] Variables: Y={y_col}, X={x_cols}")
+
+        # === Cargar dataset ===
         try:
-            x_cols, y_col, normalized_cols = select_columns(df, cfg)
+            df = load_dataset(dataset_path, sheet=sheet_name)
         except Exception as e:
-            print(f"[WARN] Selección de columnas fallida: {e}")
+            print(f"[ERROR] Fallo al cargar dataset '{dataset_path}': {e}")
             continue
 
-        # Preprocesamiento numérico
+        # === Preprocesamiento numérico ===
         used_cols = [y_col] + x_cols
-        df_num, dropped = ensure_numeric_subset(df, used_cols)
-        if dropped > 0:
-            print(f"[INFO] Filas descartadas por NaN/no-numéricas: {dropped}")
-
-        # Normalización y validación de instancias
-        norm_instances: List[Dict[str, str]] = []
-        for inst in cfg.instances:
-            inst_norm: Dict[str, str] = {}
-            for k, v in inst.items():
-                nk = normalize_str(k)
-                if nk in normalized_cols:
-                    true_col = normalized_cols[nk]
-                    if true_col in x_cols:
-                        inst_norm[true_col] = v
-            if all(c in inst_norm for c in x_cols):
-                norm_instances.append(inst_norm)
-            else:
-                print(f"[WARN] Instancia ignorada (faltan columnas X requeridas): {x_cols}")
-
-        if not norm_instances:
-            print("[WARN] No hay instancias válidas para este dataset.")
+        try:
+            df_num, dropped = ensure_numeric_subset(df, used_cols)
+        except Exception as e:
+            print(f"[ERROR] Fallo al preprocesar datos: {e}")
             continue
 
-        # Detección de tipo de regresión
-        if len(x_cols) == 1:
-            print(f"[INFO] Usando modo regresión simple ({x_cols[0]})")
-            block = run_simple_regression(df_num, y_col, x_cols[0], norm_instances, instance_counter)
-        else:
-            print(f"[INFO] Usando modo regresión múltiple ({len(x_cols)} variables)")
-            block = build_full_report_block(norm_instances, df_num, y_col, x_cols)
+        if df_num.empty:
+            print(f"[WARN] Dataset vacío tras limpieza, se omite bloque {i}.")
+            continue
 
-        all_instances_blocks.append(block)
-        instance_counter += len(norm_instances)
+        if dropped > 0:
+            print(f"[INFO] Filas eliminadas durante preprocesamiento: {dropped}")
 
-    # Generación del PDF (unificado)
-    if not all_instances_blocks:
-        print("[ERROR] No se generaron bloques de reporte.")
-        sys.exit(1)
+        # === Construcción del bloque LaTeX ===
+        try:
+            block_tex = build_full_report_block(
+                instances=instances,
+                df_num=df_num,
+                y_col=y_col,
+                x_cols=x_cols,
+                start_index=global_index,  # contador global
+            )
+            all_latex_blocks += block_tex + "\n"
+            global_index += len(instances)
+            print(f"[OK] Bloque {i} procesado correctamente ({len(instances)} instancia(s)).")
+        except Exception as e:
+            print(f"[ERROR] Error generando bloque {i}: {e}")
+            continue
 
-    all_text = "\n".join(all_instances_blocks)
-    out_path = (configs[0].report_path or "output/reporte.pdf").replace(".pdf", "_all.pdf")
+    # === Compilar reporte unificado ===
+    if all_latex_blocks.strip():
+        print("\n=== Generando reporte PDF unificado ===")
+        try:
+            render_all_instances_pdf(final_report_path, all_latex_blocks)
+        except Exception as e:
+            print(f"[ERROR] No se pudo generar el PDF: {e}")
+    else:
+        print("[WARN] No se generaron bloques válidos; no hay contenido para el PDF final.")
 
-    try:
-        render_all_instances_pdf(out_path, all_text)
-        print(f"[OK] Reporte generado con todas las instancias: {out_path}")
-    except Exception as e:
-        print(f"[ERROR] Fallo en la generación del PDF: {e}")
-        sys.exit(1)
 
+# ============================================================
+# === EJECUCIÓN ==============================================
+# ============================================================
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n[INTERRUPTED] Ejecución cancelada por el usuario.")
+        sys.exit(130)
 
