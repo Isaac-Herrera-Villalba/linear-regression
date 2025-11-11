@@ -4,17 +4,26 @@
 """
  src/regression/simple_regression.py
  ------------------------------------------------------------
- Módulo de apoyo para la generación del bloque LaTeX asociado a una
- regresión lineal simple (una variable independiente).
+ Genera el bloque LaTeX correspondiente a una regresión lineal simple
+ (una sola variable independiente).
 
- El procedimiento calcula de manera explícita:
-   - Estadísticos base (∑x, ∑y, ∑xy, ∑x², medias).
-   - Pendiente (β₁) e intercepto (β₀).
-   - Ecuación del modelo ŷ = β₀ + β₁ x.
-   - Métrica de ajuste R², junto con una tabla interpretativa.
-   - Sustitución numérica de instancias para predicción.
+ El procedimiento realiza los siguientes cálculos paso a paso:
 
- La salida es una cadena LaTeX lista para insertarse en el reporte.
+   1. Conversión robusta de los datos numéricos.
+   2. Cálculo de estadísticos base:
+        ∑x, ∑y, ∑xy, ∑x², medias (x̄, ȳ).
+   3. Obtención explícita de los coeficientes:
+        β₁ = Σ[(xᵢ - x̄)(yᵢ - ȳ)] / Σ[(xᵢ - x̄)²]
+        β₀ = ȳ - β₁ x̄
+   4. Cálculo del coeficiente de determinación R².
+   5. Verificación de las ecuaciones normales sustituyendo β:
+        - Muestra los valores resultantes.
+        - Calcula los residuos numéricos, que deben ser ≈ 0.
+   6. Sustitución numérica de X en Y para obtener ŷ.
+
+ Cada paso se documenta y genera en formato LaTeX, listo para insertarse
+ en el reporte final.
+
  ------------------------------------------------------------
 """
 
@@ -22,7 +31,6 @@ from __future__ import annotations
 from typing import List, Dict
 import numpy as np
 import pandas as pd
-
 from src.report.report_latex import _fmt_number, dataset_preview_table
 
 
@@ -34,68 +42,58 @@ def run_simple_regression(
     instance_start: int
 ) -> str:
     """
-    Construye el bloque LaTeX completo correspondiente a una regresión
-    lineal simple.
+    Construye el bloque LaTeX completo para una regresión lineal simple.
 
     Parámetros
     ----------
     df : pd.DataFrame
-        Conjunto de datos preprocesado. Debe contener columnas numéricas
-        para `x_col` y `y_col`. La conversión a float se robustece con
-        `pd.to_numeric(..., errors="coerce")`.
+        Conjunto de datos que contiene las columnas numéricas X y Y.
     y_col : str
-        Nombre de la variable dependiente (Y).
+        Nombre de la variable dependiente.
     x_col : str
-        Nombre de la variable independiente (X).
+        Nombre de la variable independiente.
     instances : List[Dict[str, float]]
-        Lista de instancias a evaluar. Cada elemento es un diccionario
-        con el par {x_col: valor}.
+        Lista de instancias con valores de X a sustituir.
     instance_start : int
-        Índice con el que inicia el numerado de secciones de instancia
-        en el reporte.
+        Índice base de la instancia dentro del reporte.
 
     Retorna
     -------
     str
-        Cadena con el contenido LaTeX de la sección completa:
-        resumen del dataset, modelo, cómputo de coeficientes, R² e
-        interpretación, y sustitución de instancias.
-
-    Detalles del flujo
-    ------------------
-    1) Conversión a float de las columnas `x_col` y `y_col`.
-    2) Cálculo de sumatorias y medias.
-    3) Obtención de β₁ y β₀:
-         β₁ = Σ[(xᵢ- x̄)(yᵢ- ȳ)] / Σ[(xᵢ- x̄)²]
-         β₀ = ȳ - β₁ x̄
-    4) Cálculo de R² a partir de SS_res y SS_tot.
-    5) Construcción del contenido LaTeX en secciones.
-    6) Para cada instancia, sustitución numérica y predicción ŷ.
+        Cadena en formato LaTeX con el desarrollo teórico, los cálculos
+        y la verificación de consistencia numérica.
     """
     # === Conversión robusta a float ===
     x = pd.to_numeric(df[x_col], errors="coerce").to_numpy(dtype=float)
     y = pd.to_numeric(df[y_col], errors="coerce").to_numpy(dtype=float)
     n = len(x)
 
-    # === Sumatorias y medias ===
-    sum_x = np.sum(x)
-    sum_y = np.sum(y)
-    sum_xy = np.sum(x * y)
-    sum_x2 = np.sum(x ** 2)
-    x_mean = np.mean(x)
-    y_mean = np.mean(y)
+    # === Estadísticos base ===
+    sum_x = float(np.sum(x))
+    sum_y = float(np.sum(y))
+    sum_xy = float(np.sum(x * y))
+    sum_x2 = float(np.sum(x ** 2))
+    x_mean = float(np.mean(x))
+    y_mean = float(np.mean(y))
 
-    # === Coeficientes del modelo (β₁, β₀) ===
-    num = np.sum((x - x_mean) * (y - y_mean))
-    den = np.sum((x - x_mean) ** 2)
+    # === Cálculo de coeficientes β₀ y β₁ ===
+    num = float(np.sum((x - x_mean) * (y - y_mean)))
+    den = float(np.sum((x - x_mean) ** 2))
     beta1 = num / den
     beta0 = y_mean - beta1 * x_mean
 
-    # === Ajuste: R² ===
+    # === Ajuste global: R² ===
     y_pred = beta0 + beta1 * x
-    ss_res = np.sum((y - y_pred) ** 2)
-    ss_tot = np.sum((y - y_mean) ** 2)
+    ss_res = float(np.sum((y - y_pred) ** 2))
+    ss_tot = float(np.sum((y - y_mean) ** 2))
     r2 = 1 - ss_res / ss_tot if ss_tot > 0 else None
+
+    # === Verificación: ecuaciones normales ===
+    # Sistema de dos ecuaciones:
+    # Σy = nβ₀ + β₁Σx
+    # Σxy = β₀Σx + β₁Σx²
+    res_eq0 = sum_y - (n * beta0 + beta1 * sum_x)
+    res_eq1 = sum_xy - (beta0 * sum_x + beta1 * sum_x2)
 
     # === Construcción del bloque LaTeX ===
     lines: List[str] = []
@@ -104,12 +102,7 @@ def run_simple_regression(
         rf"\textbf{{Regresión lineal simple}} sobre la variable ${x_col}$ con $n = {n}$ observaciones."
     )
 
-    # Resumen del dataset
-    rows, cols = df.shape
-    lines.append(r"\subsection*{Resumen del dataset}")
-    lines.append(dataset_preview_table(df))
-
-    # Paso 1: Modelo general
+    # --- Paso 1: Modelo lineal general ---
     lines.append(r"\subsection*{Paso 1: Modelo lineal general}")
     lines.append(r"\[ y = \beta_0 + \beta_1 x \]")
     lines.append(r"\textbf{Donde:}")
@@ -120,7 +113,7 @@ def run_simple_regression(
     lines.append(r"  \item $\beta_1$ : Pendiente (coeficiente de regresión).")
     lines.append(r"\end{itemize}")
 
-    # Paso 2: Cálculo de coeficientes
+    # --- Paso 2: Cálculo de los coeficientes ---
     lines.append(r"\subsection*{Paso 2: Cálculo de los coeficientes}")
     lines.append(r"\textbf{Datos estadísticos:}")
     lines.append(
@@ -131,65 +124,63 @@ def run_simple_regression(
     )
     lines.append(rf"\[\bar{{x}} = {_fmt_number(x_mean)}, \quad \bar{{y}} = {_fmt_number(y_mean)}\]")
 
-    # Fórmula de la pendiente β₁
+    # --- Fórmulas de β₁ y β₀ ---
     lines.append(r"\textbf{Fórmula para la pendiente:}")
     lines.append(
         r"\[\beta_1 = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sum (x_i - \bar{x})^2}"
         rf" = \frac{{{_fmt_number(num)}}}{{{_fmt_number(den)}}} = {_fmt_number(beta1)} \]"
     )
 
-    # Fórmula del intercepto β₀
     lines.append(r"\textbf{Fórmula para la ordenada al origen:}")
     lines.append(
         r"\[\beta_0 = \bar{y} - \beta_1 \bar{x}"
         rf" = {_fmt_number(y_mean)} - ({_fmt_number(beta1)})({_fmt_number(x_mean)}) = {_fmt_number(beta0)} \]"
     )
 
-    # Ecuación final del modelo
     lines.append(r"\textbf{Ecuación final del modelo:}")
     lines.append(rf"\[\hat{{y}} = {_fmt_number(beta0)} + {_fmt_number(beta1)}x \]")
 
-    # Paso 3: Coeficiente de determinación (R²)
+    # --- Paso 3: Coeficiente de determinación ---
     lines.append(r"\subsection*{Paso 3: Coeficiente de determinación $(R^2)$}")
-    lines.append(r"El coeficiente de determinación mide qué tan bien el modelo explica la variabilidad observada de $y$.")
+    lines.append(r"El coeficiente de determinación mide qué tan bien el modelo explica la variabilidad de $y$.")
 
-    # Tabla interpretativa de R²
-    lines.append(r"\begin{center}")
-    lines.append(r"\begin{tabular}{c l}")
-    lines.append(r"\toprule")
-    lines.append(r"\textbf{R² (aprox.)} & \textbf{Interpretación} \\")
-    lines.append(r"\midrule")
-    lines.append(r"0.90 -- 1.00 & Ajuste excelente \\")
-    lines.append(r"0.70 -- 0.89 & Ajuste bueno \\")
-    lines.append(r"0.40 -- 0.69 & Ajuste regular \\")
-    lines.append(r"0.10 -- 0.39 & Ajuste pobre \\")
-    lines.append(r"0.00 -- 0.09 & Sin ajuste o nulo \\")
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-    lines.append(r"\end{center}")
+    # --- Paso 4: Sustitución de β en las ecuaciones normales ---
+    lines.append(r"\subsection*{Paso 4: Sustitución de $\boldsymbol{\beta}$ en las ecuaciones normales (verificación)}")
+    lines.append(r"Se sustituyen los valores calculados de $\beta_0$ y $\beta_1$ para comprobar la validez del sistema:")
 
-    # Sustitución numérica de R²
-    lines.append(r"\[ SS_{res} = \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = " + _fmt_number(ss_res) + r" \]")
-    lines.append(r"\[ SS_{tot} = \sum_{i=1}^{n} (y_i - \bar{y})^2 = " + _fmt_number(ss_tot) + r" \]")
+    # Primera ecuación
+    lines.append(r"\textbf{Primera ecuación:}")
     lines.append(
-        r"\[ R^2 = 1 - \frac{SS_{res}}{SS_{tot}} = 1 - \frac{" + _fmt_number(ss_res) +
-        "}{" + _fmt_number(ss_tot) + "} = " + _fmt_number(r2) + r" \]"
-    )
-
-    lines.append(
-        r"\textbf{Interpretación:} un valor de $R^2$ cercano a 1 indica que el modelo explica "
-        r"casi toda la variabilidad de los datos."
+        rf"\[\sum y_i = n\beta_0 + \beta_1 \sum x_i"
+        rf" = {n}({_fmt_number(beta0)}) + ({_fmt_number(beta1)})({_fmt_number(sum_x)})"
+        rf" = {_fmt_number(n*beta0 + beta1*sum_x)} \]"
     )
     lines.append(
-        "\\\\[0.5em]El modelo logra explicar aproximadamente el \\textbf{{{}}}\\% "
-        "de la variabilidad total de $Y$.".format(_fmt_number(r2 * 100))
+        rf"\[\sum y_i - (n\beta_0 + \beta_1 \sum x_i)"
+        rf" = {_fmt_number(sum_y)} - ({_fmt_number(n*beta0 + beta1*sum_x)})"
+        rf" = {_fmt_number(res_eq0)} \]"
     )
 
-    # Paso 4: Predicciones para instancias
+    # Segunda ecuación
+    lines.append(r"\textbf{Segunda ecuación:}")
+    lines.append(
+        rf"\[\sum x_i y_i = \beta_0 \sum x_i + \beta_1 \sum x_i^2"
+        rf" = ({_fmt_number(beta0)})({_fmt_number(sum_x)}) + ({_fmt_number(beta1)})({_fmt_number(sum_x2)})"
+        rf" = {_fmt_number(beta0*sum_x + beta1*sum_x2)} \]"
+    )
+    lines.append(
+        rf"\[\sum x_i y_i - (\beta_0 \sum x_i + \beta_1 \sum x_i^2)"
+        rf" = {_fmt_number(sum_xy)} - ({_fmt_number(beta0*sum_x + beta1*sum_x2)})"
+        rf" = {_fmt_number(res_eq1)} \]"
+    )
+
+    lines.append(r"\textit{Valores cercanos a cero indican que las ecuaciones normales se satisfacen correctamente.}")
+
+    # --- Paso 5: Predicción para instancias ---
     for i, inst in enumerate(instances, start=instance_start):
         val = float(inst[x_col])
         y_pred_inst = beta0 + beta1 * val
-        lines.append(r"\subsection*{Paso 4: Sustitución de X en Y (predicción)}")
+        lines.append(r"\subsection*{Paso 5: Sustitución de X en Y (predicción)}")
         lines.append(f"Atributos: {x_col}={_fmt_number(val)}")
         lines.append(
             rf"\[\hat{{y}} = {_fmt_number(beta0)} + {_fmt_number(beta1)}({_fmt_number(val)})"
